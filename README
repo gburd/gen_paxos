@@ -1,7 +1,8 @@
 README: gen_paxos
 
                                                                    2009.4.4 
-   						   kuenishi+paxos@gmail.com
+                                                   kuenishi+paxos@gmail.com
+
 Motivation
 
  gen_paxos is to be a generic paxos module, easy to use in distributed system.
@@ -27,7 +28,13 @@ Future works
 Related works
 
  - libpaxos (http://sourceforge.net/projects/libpaxos) 
- libpaxos is almost same implementation of PAXOS consensus protocol. it has Simple version and
- Fast version of paxos and seems well working. it's implementation has paxos coordinator process
- which can be SPOF in a really distributed environment, which is solved in gen_paxos.
+ libpaxos is almost same implementation of PAXOS consensus protocol. it has Simple 
+ version and Fast version of paxos and seems well working. it's implementation 
+ has paxos coordinator process which can be SPOF in a really distributed 
+ environment, which is solved in gen_paxos.
  
+
+Appendix
+ - if you find a bug or written a patch/improvement, tell me through any path.
+ - Usage / Copy / Redistribution License - GPLv2.
+
