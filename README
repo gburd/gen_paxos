@@ -1,0 +1,33 @@
+README: gen_paxos
+
+                                                                   2009.4.4 
+   						   kuenishi+paxos@gmail.com
+Motivation
+
+ gen_paxos is to be a generic paxos module, easy to use in distributed system.
+paxos implementation is to be a large finite state machine. My motivation is
+to reduce the cost of re-invention of wheels.
+
+
+Current status
+
+ a prototype of paxos consensus protocol has successfully worked.
+
+
+Future works
+
+ - to refine the code so as to work as a generic erlang module.
+ - automation of basic tests.
+ - to expand coverege of tested combinations of states.
+   - because paxos is complex FSM as a whole
+ - to create a gen_leader compatible interface? 
+   - gen_leader http://www.cs.chalmers.se/~hanssv/leader_election/
+
+
+Related works
+
+ - libpaxos (http://sourceforge.net/projects/libpaxos) 
+ libpaxos is almost same implementation of PAXOS consensus protocol. it has Simple version and
+ Fast version of paxos and seems well working. it's implementation has paxos coordinator process
+ which can be SPOF in a really distributed environment, which is solved in gen_paxos.
+ 
