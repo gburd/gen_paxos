@@ -5,7 +5,7 @@ README: gen_paxos
 
 Motivation
 
- gen_paxos is to be a generic paxos module, easy to use in distributed system.
+ gen_paxos is a generic paxos module, easy to use in distributed system.
 paxos implementation is to be a large finite state machine. My motivation is
 to reduce the cost of re-invention of wheels.
 
