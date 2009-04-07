@@ -5,23 +5,25 @@ README: gen_paxos/paxos_fsm
 
 * Motivation
 
- gen_paxos is a generic paxos module, easy to use in distributed system.
-paxos implementation is to be a large finite state machine. My motivation
-is to reduce the cost of re-invention of wheels.
- PAXOS is a consensus method in distributed and masterless environment,
-which is mathmatically guaranteed to make conclusion in infinite time[1].
+  gen_paxos is a generic paxos module, easy to use in distributed system.
+ paxos implementation is to be a large finite state machine. My motivation
+ is to reduce the cost of re-invention of wheels.
+  PAXOS is a consensus method in distributed and masterless environment,
+ which is mathmatically guaranteed to make conclusion in infinite time[1].
 
 
 * Current status
 
- a prototype of paxos consensus protocol (paxos_fsm) has successfully worked.
+ A prototype of paxos consensus protocol (paxos_fsm) has successfully worked.
+
 
 * Usage
- With setting (1)Name of Subject, (2)Idenfication Number in PAXOS group,
-(3)Value that PAXOS agent will propose, and (4)Other PAXOS agents into
-paxos_fsm:start/4, PAXOS consensus IPC (part-time parliament) starts. With
-calling paxos_fsm:get_result/1 you'll get result of the parliament. With
-calling paxos_fsm:stop/1 you'll garbage-collect the part-time parliament.
+
+  With setting (1)Name of Subject, (2)Idenfication Number in PAXOS group,
+ (3)Value that PAXOS agent will propose, and (4)Other PAXOS agents into
+ paxos_fsm:start/4, PAXOS consensus IPC (part-time parliament) starts. With
+ calling paxos_fsm:get_result/1 you'll get result of the parliament. With
+ calling paxos_fsm:stop/1 you'll garbage-collect the part-time parliament.
 
 ** Usage Sample
 - in node A:
@@ -64,14 +66,14 @@ calling paxos_fsm:stop/1 you'll garbage-collect the part-time parliament.
 
 * Related works
 
- - libpaxos (http://sourceforge.net/projects/libpaxos)
+ - libpaxos ( http://sourceforge.net/projects/libpaxos )
  libpaxos is almost same implementation of PAXOS consensus protocol. it has Simple
  version and Fast version of paxos and seems well working. it's implementation
  has paxos coordinator process which can be SPOF in a really distributed
  environment, which is solved in gen_paxos.
 
 
-Appendix
+* Appendix
  - if you find a bug or written a patch/improvement, tell me through any path.
  - Usage / Copy / Redistribution License - GPLv2.
 

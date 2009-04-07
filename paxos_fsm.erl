@@ -17,7 +17,7 @@
 
 %% @doc PAXOS Finit State Machine implementation
 -module(paxos_fsm).
--author('kuenishi@gmail.com').
+-author('kuenishi+paxos@gmail.com').
 
 -behaviour(gen_fsm).
 
