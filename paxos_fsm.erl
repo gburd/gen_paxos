@@ -39,7 +39,13 @@
 %% @type players() = list()
 
 %% @doc   Users call this function. Initializes PAXOS FSM.
-%% @spec  start( subject_identifier(), n(), any(), players() ) -> Result
+%%        subject_identifier - subject name. this names process, unless paxos_fsm can't find others.
+%%        n()                - paxos_fsm agent id. this must be unique in the paxos_fsm group.
+%%                             no more than length of players.
+%%        any()              - value to suggest (prepare, propose).
+%%        other_players()    - member list of paxos_fsm group, which consists of agents, except oneself.
+%%
+%% @spec  start( subject_identifier(), n(), any(), other_players() ) -> Result
 %%    Result = {ok, Pid} | ignore | { error, Error }
 %%    Error  = {already_started, Pid } | term()
 %%    Pid = pid()

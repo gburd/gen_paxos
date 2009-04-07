@@ -1,48 +1,82 @@
-README: gen_paxos
+README: gen_paxos/paxos_fsm
 
                                                                    2009.4.4 
                                                    kuenishi+paxos@gmail.com
 
-Motivation
+* Motivation
 
  gen_paxos is a generic paxos module, easy to use in distributed system.
-paxos implementation is to be a large finite state machine. My motivation is
-to reduce the cost of re-invention of wheels.
+paxos implementation is to be a large finite state machine. My motivation
+is to reduce the cost of re-invention of wheels.
+ PAXOS is a consensus method in distributed and masterless environment,
+which is mathmatically guaranteed to make conclusion in infinite time[1].
 
 
-Current status
+* Current status
 
- a prototype of paxos consensus protocol has successfully worked.
+ a prototype of paxos consensus protocol (paxos_fsm) has successfully worked.
 
+* Usage
+ With setting (1)Name of Subject, (2)Idenfication Number in PAXOS group,
+(3)Value that PAXOS agent will propose, and (4)Other PAXOS agents into
+paxos_fsm:start/4, PAXOS consensus IPC (part-time parliament) starts. With
+calling paxos_fsm:get_result/1 you'll get result of the parliament. With
+calling paxos_fsm:stop/1 you'll garbage-collect the part-time parliament.
 
-Sample Usage
- > node().
+** Usage Sample
+- in node A:
+ nodeA> node().
  'nodeA'.
- > nodes().
- ['nodeA', 'nodeB', 'nodeC'].
- > paxos_fsm:start( node(), 0, "nodeA is master", nodes() ).
- ...(paxos consensus protocol started)...
+ nodeA> nodes().
+ ['nodeB'].
+ nodeA> paxos_fsm:start( subject_x, 0, hogehoge, nodes() ).
+ ...(paxos consensus protocol started; messages will be printed)...
+ paxos mediation done. decided: hogehoge - (N=2)
+ nodeA> paxos_fsm:get_result( subject_x ).
+ {decided, hogehoge}
+ nodeA> paxos_fsm:stop( subject_x ).
+ paxos_fsm terminated (normal).
+ ok
+ StateName: decided
+ StateData: ....
+ nodeA>
 
-Future works
+- in node B:
+ nodeB> node().
+ 'nodeB'.
+ nodeB> nodes().
+ ['nodeA'].
+ nodeB> paxos_fsm:start( subject_x, 1, hugahuga, nodes() ).
+ ...(paxos consensus protocol started; messages will be printed)...
+ paxos mediation done. decided: hogehoge - (N=2)
+ nodeB>
+
+
+* Future works
 
  - to refine the code so as to work as a generic erlang module.
  - automation of basic tests.
  - to expand coverege of tested combinations of states.
    - because paxos is complex FSM as a whole
- - to create a gen_leader compatible interface? 
+ - to create a gen_leader compatible interface?
    - gen_leader http://www.cs.chalmers.se/~hanssv/leader_election/
 
 
-Related works
+* Related works
 
- - libpaxos (http://sourceforge.net/projects/libpaxos) 
- libpaxos is almost same implementation of PAXOS consensus protocol. it has Simple 
- version and Fast version of paxos and seems well working. it's implementation 
- has paxos coordinator process which can be SPOF in a really distributed 
+ - libpaxos (http://sourceforge.net/projects/libpaxos)
+ libpaxos is almost same implementation of PAXOS consensus protocol. it has Simple
+ version and Fast version of paxos and seems well working. it's implementation
+ has paxos coordinator process which can be SPOF in a really distributed
  environment, which is solved in gen_paxos.
- 
+
 
 Appendix
  - if you find a bug or written a patch/improvement, tell me through any path.
  - Usage / Copy / Redistribution License - GPLv2.
 
+
+[1] Chandra, Tushar; Robert Griesemer, Joshua Redstone (2007).
+ "Paxos Made Live – An Engineering Perspective". PODC '07:
+ 26th ACM Symposium on Principles of Distributed Computing.
+ http://labs.google.com/papers/paxos_made_live.html.
