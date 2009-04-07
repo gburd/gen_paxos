@@ -15,6 +15,14 @@ Current status
  a prototype of paxos consensus protocol has successfully worked.
 
 
+Sample Usage
+ > node().
+ 'nodeA'.
+ > nodes().
+ ['nodeA', 'nodeB', 'nodeC'].
+ > paxos_fsm:start( node(), 0, "nodeA is master", nodes() ).
+ ...(paxos consensus protocol started)...
+
 Future works
 
  - to refine the code so as to work as a generic erlang module.

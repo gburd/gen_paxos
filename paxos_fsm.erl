@@ -1,3 +1,4 @@
+%% -*- coding: utf-8 -*-
 %%     gen_paxos
 %% 　  Copyright (C) 2009   kuenishi+paxos@gmail.com
 
@@ -14,35 +15,58 @@
 %%     You should have received a copy of the GNU General Public License
 %%     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+%% @doc PAXOS Finit State Machine implementation
 -module(paxos_fsm).
 -author('kuenishi@gmail.com').
 
 -behaviour(gen_fsm).
 
+%% @doc functions for users.
 -export([start/4, stop/1, get_result/1]).
 
+%% @doc functions for gen_fsm.
 -export([init/1, handle_event/3, handle_sync_event/4,
 	 handle_info/3, terminate/3, code_change/4]).
 
+%% @doc states of FSM.
 -export([nil/2, preparing/2, proposing/2, acceptor/2,
 	 learner/2, decided/2]).
 
 -define( DEFAULT_TIMEOUT, 3000 ).
 
+%% @type subject_identifier() = atom()
+%% @type propose_number() = int()
+%% @type players() = list()
+
+%% @doc   Users call this function. Initializes PAXOS FSM.
+%% @spec  start( subject_identifier(), n(), any(), players() ) -> Result
+%%    Result = {ok, Pid} | ignore | { error, Error }
+%%    Error  = {already_started, Pid } | term()
+%%    Pid = pid()
 start(S, InitN, V, Players) ->
     lists:map( fun(Player)-> net_adm:ping(Player) end, Players ),
     gen_fsm:start_link( 
-      {global, {?MODULE, node(), S}}, %{global, ?MODULE}, 
-      %{local, {?MODULE, S} },
-      ?MODULE, [S, InitN, V, Players],
-      [{timeout, ?DEFAULT_TIMEOUT}]%, {debug, debug_info} ]
+      {global, {?MODULE, node(), S}}, %FsmName  %%{global, ?MODULE},       %{local, {?MODULE, S} },
+      ?MODULE,                        %Module
+      [S, InitN, V, Players],         %Args
+      [{timeout, ?DEFAULT_TIMEOUT}]   %Options  %%, {debug, debug_info} ]
      ).
 
+%% @doc    Users can stop the FSM after or before PAXOS have make result.
+%% @spec   stop( subject_identifier() ) ->  ok
 stop(S) ->  %    io:format("~p ~p.~n",  [?MODULE, stopped]),
     gen_fsm:send_all_state_event({global, {?MODULE,node(),S}}, stop).
 
+%% @doc    Users can get result as long as FSM remains.
+%% @spec   get_result( subject_identifier() ) -> Reply
+%%    Reply = {decided, V} | {OtherStateName, V}
 get_result(S)->
     gen_fsm:sync_send_all_state_event({global, {?MODULE,node(),S}}, result).
+
+
+%% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ %%
+%%   codes belows are for gen_fsm. users don't need.       %%
+%% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ %%
 
 init([S, InitN, V, Players])->
     io:format("~p~n", [[S, InitN, V, Players]]),
