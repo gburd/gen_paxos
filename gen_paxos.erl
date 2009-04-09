@@ -19,7 +19,9 @@
 -module(gen_paxos).
 -author('kuenishi+paxos@gmail.com').
 
--export([behaviour_info/1]).
+-export([behaviour_info/1, version_info/0]).
+
+-export([ask/3, start_link/2, stop/0, clear/0]).
 
 behaviour_info(callbacks)->
     [
@@ -27,3 +29,43 @@ behaviour_info(callbacks)->
      {stop,  1},
      {result,1}
     ].
+
+version_info()-> [?MODULE, 0.1.0].
+
+%% spawns a coordinator process.
+%% @spec  start_link( node_identifier(), initN, other_players() ) -> Pid
+start_link( InitN, Others )->
+    Pid = spawn_link( ?MODULE,  coordinator, [InitN, Others] ),
+    register( coordinator, Pid ),
+    Pid.
+
+stop
+
+%%ask(Key, void, Callback)->
+%%    ok.
+ask(Key, Value, Callback)->
+    coordinator ! {self(), ask, { Key, Value, Callback }},
+    receive
+	{From, result, {Key, Value} }-> %success
+	    Value;
+	{From, result, {Key, Other} }->
+	    Other;
+	{From, doing, _} ->
+	    ask(Key, Value, Callback)
+    end.
+
+coordinator( InitN, Others, DoingList )->
+    receive
+	{From, ask, {Key, Value, Callback}}->
+	    case get( Key ) of
+		undefined->            %% when the subject not yet done
+		    paxos_fsm:start( Key, InitN, Value, Others ),
+		    NewDoingList = [Key | DoingList ];
+		{done, ResultValue} -> %% when the subject already done
+%%		    Callback( Key, Value ),
+		    From ! {self(), result, {Key, ResultValue} }, %% return the result
+		    NewDoingList = DoingList
+	    end
+    end,
+    %% TODO: need renewal of Waiting list
+    coordinator( InitN, Others, NewDoingList).
