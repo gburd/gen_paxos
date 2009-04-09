@@ -30,7 +30,7 @@ behaviour_info(callbacks)->
      {result,1}
     ].
 
-version_info()-> [?MODULE, 0.1.0].
+version_info()-> [?MODULE, "0.1.0"].
 
 %% spawns a coordinator process.
 %% @spec  start_link( node_identifier(), initN, other_players() ) -> Pid
@@ -45,13 +45,16 @@ stop()->
 %%ask(Key, void, Callback)->
 %%    ok.
 ask(Key, Value)->
-    coordinator ! {self(), ask, { Key, Value, Callback }},
+    coordinator ! {self(), ask, { Key, Value }},
     receive
 	{From, result, {Key, Value} }-> %success
 	    Value;
 	{From, result, {Key, Other} }->
 	    Other
     end.
+
+clear()->
+    coordinator ! {self(), clear}.
 
 coordinator( InitN, Others )->
     receive
