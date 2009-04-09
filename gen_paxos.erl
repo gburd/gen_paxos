@@ -53,20 +53,21 @@ ask(Key, Value)->
 	    Other
     end.
 
-coordinator( InitN, Others, DoingList )->
+coordinator( InitN, Others )->
     receive
+	{From, ask, {Key, void}}->
+	    From ! {self(), result, {Key, get( Key )}};
 	{From, ask, {Key, Value}}->
 	    case get( Key ) of
 		undefined->            %% when the subject not yet done
-		    paxos_fsm:start( Key, InitN, Value, Others ),
-		    coordinator( InitN, Others,  [Key | DoingList ] );
-		{done, ResultValue} -> %% when the subject already done
-%%		    Callback( Key, Value ),
-		    From ! {self(), result, {Key, ResultValue} }, %% return the result
-		    coordinator( InitN, Others, DoingList )
+		    paxos_fsm:start( Key, InitN, Value, Others );
+		ResultValue-> %% when the subject already done
+		    From ! {self(), result, {Key, ResultValue} } %% return the result
 	    end;
 	{From, set, {Key, Value}}->
-	    put( Key, Value ),
-	    coordinator( InitN, Others, DoingList )
-    end.
-    %% TODO: need renewal of Waiting list
+	    put( Key, Value );
+	{From, stop, normal}->
+	    exit( stop )
+    end,
+    coordinator( InitN, Others ).
+%% TODO: need renewal of Waiting list
