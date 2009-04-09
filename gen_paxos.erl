@@ -21,7 +21,7 @@
 
 -export([behaviour_info/1, version_info/0]).
 
--export([ask/3, start_link/2, stop/0, clear/0]).
+-export([ask/2, start_link/2, stop/0, clear/0]).
 
 behaviour_info(callbacks)->
     [
@@ -39,33 +39,34 @@ start_link( InitN, Others )->
     register( coordinator, Pid ),
     Pid.
 
-stop
+stop()->
+    coordinator ! {self(), stop, normal}.
 
 %%ask(Key, void, Callback)->
 %%    ok.
-ask(Key, Value, Callback)->
+ask(Key, Value)->
     coordinator ! {self(), ask, { Key, Value, Callback }},
     receive
 	{From, result, {Key, Value} }-> %success
 	    Value;
 	{From, result, {Key, Other} }->
-	    Other;
-	{From, doing, _} ->
-	    ask(Key, Value, Callback)
+	    Other
     end.
 
 coordinator( InitN, Others, DoingList )->
     receive
-	{From, ask, {Key, Value, Callback}}->
+	{From, ask, {Key, Value}}->
 	    case get( Key ) of
 		undefined->            %% when the subject not yet done
 		    paxos_fsm:start( Key, InitN, Value, Others ),
-		    NewDoingList = [Key | DoingList ];
+		    coordinator( InitN, Others,  [Key | DoingList ] );
 		{done, ResultValue} -> %% when the subject already done
 %%		    Callback( Key, Value ),
 		    From ! {self(), result, {Key, ResultValue} }, %% return the result
-		    NewDoingList = DoingList
-	    end
-    end,
+		    coordinator( InitN, Others, DoingList )
+	    end;
+	{From, set, {Key, Value}}->
+	    put( Key, Value ),
+	    coordinator( InitN, Others, DoingList )
+    end.
     %% TODO: need renewal of Waiting list
-    coordinator( InitN, Others, NewDoingList).
