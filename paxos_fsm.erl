@@ -21,6 +21,8 @@
 
 -behaviour(gen_fsm).
 
+-export([version_info/0]).
+
 %% @doc functions for users.
 -export([start/4, stop/1, get_result/1]).
 
@@ -34,9 +36,18 @@
 
 -define( DEFAULT_TIMEOUT, 3000 ).
 
+-record( state, {subject, n, value,
+		      all, quorum, players, init_n} ).
+-record( event, {name,
+		 subject, n, value,
+		 from} ).
+
 %% @type subject_identifier() = atom()
 %% @type propose_number() = int()
 %% @type players() = list()
+
+version_info()-> {?MODULE, 1}.
+    
 
 %% @doc   Users call this function. Initializes PAXOS FSM.
 %%        subject_identifier - subject name. this names process, unless paxos_fsm can't find others.

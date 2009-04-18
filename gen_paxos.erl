@@ -28,9 +28,11 @@ behaviour_info(callbacks)->
      {start, 4},
      {stop,  1},
      {result,1}
-    ].
+    ];
+behaviour_info(_Other)->
+    undefined.
 
-version_info()-> [?MODULE, "0.1.0"].
+version_info()-> {?MODULE, 1}.
 
 %% spawns a coordinator process.
 %% @spec  start_link( node_identifier(), initN, other_players() ) -> Pid
