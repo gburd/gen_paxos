@@ -21,7 +21,8 @@
 
 -export([behaviour_info/1, version_info/0]).
 
--export([ask/2, start_link/2, stop/0, clear/0]).
+-export([ask/2, start_link/2,
+	 stop/0, clear/0]).
 
 behaviour_info(callbacks)->
     [
@@ -34,20 +35,41 @@ behaviour_info(_Other)->
 
 version_info()-> {?MODULE, 1}.
 
+-define( DEFAULT_COORDINATOR_NUM, 3 ).
+
 %% spawns a coordinator process.
 %% @spec  start_link( node_identifier(), initN, other_players() ) -> Pid
 start_link( InitN, Others )->
+    start_link( InitN, Others, ?DEFAULT_COORDINATOR_NUM ).
+
+
+start_link( InitN, Others, 0 )->
+    ok;
+start_link( InitN, Others, NumCoordinators )->
     Pid = spawn_link( ?MODULE,  coordinator, [InitN, Others] ),
-    register( coordinator, Pid ),
-    Pid.
+    register( get_process_name_from_int(NumCoordinators), Pid ),
+    start_link( InitN, Others, NumCoordinators-1).
+
+get_process_name_from_int( N )-> % 1...?DEFAULT_COORDINATOR_NUM
+    list_to_atom( "coordinator" ++ integer_to_list(N) ).
+
+get_process_name_from_key( Key )-> 
+    get_process_name_from_int( erlang:phash( Key, ?DEFAULT_COORDINATOR_NUM ) ). % 1...?DEFAULT_COORDINATOR_NUM
 
 stop()->
-    coordinator ! {self(), stop, normal}.
+    stop( ?DEFAULT_COORDINATOR_NUM ).
+
+stop(0)-> ok;
+stop(N)-> 
+    Coordinator = get_process_name_from_int( N ),
+    Coordinator ! {self(), stop, normal}.
+    
 
 %%ask(Key, void, Callback)->
 %%    ok.
 ask(Key, Value)->
-    coordinator ! {self(), ask, { Key, Value }},
+    Coordinator = get_process_name_from_key( Key ),
+    Coordinator ! {self(), ask, { Key, Value }},
     receive
 	{From, result, {Key, Value} }-> %success
 	    Value;
@@ -56,7 +78,13 @@ ask(Key, Value)->
     end.
 
 clear()->
-    coordinator ! {self(), clear}.
+    clear( ?DEFAULT_COORDINATOR_NUM ).
+
+clear(0)-> ok;
+clear(N)-> 
+    Coordinator = get_process_name_from_int( N ),
+    Coordinator ! {self(), clear, normal}.
+
 
 coordinator( InitN, Others )->
     receive
