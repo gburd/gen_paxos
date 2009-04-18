@@ -40,13 +40,14 @@ version_info()-> {?MODULE, 1}.
 %% spawns a coordinator process.
 %% @spec  start_link( node_identifier(), initN, other_players() ) -> Pid
 start_link( InitN, Others )->
+    lists:map( fun(Other)-> net_adm:ping(Other) end, Others ),
     start_link( InitN, Others, ?DEFAULT_COORDINATOR_NUM ).
 
-start_link( InitN, Others, 0 )->      ok;
+start_link( _InitN, _Others, 0 )->     [];
 start_link( InitN, Others, NumCoordinators )->
     Pid = spawn_link( ?MODULE,  coordinator, [InitN, Others] ),
     register( get_process_name_from_int(NumCoordinators), Pid ),
-    start_link( InitN, Others, NumCoordinators-1).
+    [Pid|start_link( InitN, Others, NumCoordinators-1)].
 
 get_process_name_from_int( N )-> % 1...?DEFAULT_COORDINATOR_NUM
     list_to_atom( "coordinator" ++ integer_to_list(N) ).
@@ -62,16 +63,16 @@ stop(N)->
     Coordinator = get_process_name_from_int( N ),
     Coordinator ! {self(), stop, normal}.
     
-
+%% if you consult a value , set Value as void.
 %%ask(Key, void, Callback)->
 %%    ok.
 ask(Key, Value)->
     Coordinator = get_process_name_from_key( Key ),
     Coordinator ! {self(), ask, { Key, Value }},
     receive
-	{From, result, {Key, Value} }-> %success
+	{_From, result, {Key, Value} }-> %success
 	    Value;
-	{From, result, {Key, Other} }->
+	{_From, result, {Key, Other} }->
 	    Other
     end.
 
@@ -95,9 +96,9 @@ coordinator( InitN, Others )->
 		ResultValue-> %% when the subject already done
 		    From ! {self(), result, {Key, ResultValue} } %% return the result
 	    end;
-	{From, set, {Key, Value}}->
+	{_From, set, {Key, Value}}-> %% set done; send to reference
 	    put( Key, Value );
-	{From, stop, normal}->
+	{_From, stop, normal}->
 	    exit( stop )
     end,
     coordinator( InitN, Others ).

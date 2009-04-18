@@ -37,7 +37,7 @@
 -define( DEFAULT_TIMEOUT, 3000 ).
 
 -record( state, {subject, n, value,
-		      all, quorum, players, init_n} ).
+		 all, quorum, players, init_n} ).
 -record( event, {name,
 		 subject, n, value,
 		 from} ).
@@ -61,7 +61,7 @@ version_info()-> {?MODULE, 1}.
 %%    Error  = {already_started, Pid } | term()
 %%    Pid = pid()
 start(S, InitN, V, Others) ->
-    lists:map( fun(Other)-> net_adm:ping(Other) end, Others ),
+%%    lists:map( fun(Other)-> net_adm:ping(Other) end, Others ),
     gen_fsm:start_link( 
       {global, {?MODULE, node(), S}}, %FsmName  %%{global, ?MODULE},       %{local, {?MODULE, S} },
       ?MODULE,                        %Module
