@@ -84,7 +84,6 @@ clear(N)->
     Coordinator = get_process_name_from_int( N ),
     Coordinator ! {self(), clear, normal}.
 
-
 coordinator( InitN, Others )->
     receive
 	{From, ask, {Key, void}}->
@@ -92,14 +91,16 @@ coordinator( InitN, Others )->
 	{From, ask, {Key, Value}}->
 	    case get( Key ) of
 		undefined->            %% when the subject not yet done
-		    paxos_fsm:start( Key, InitN, Value, Others );
+		    paxos_fsm:start( Key, InitN, Value, Others, [self(), From]);
 		ResultValue-> %% when the subject already done
 		    From ! {self(), result, {Key, ResultValue} } %% return the result
 	    end;
-	{_From, set, {Key, Value}}-> %% set done; send to reference
+	{_From, result, {Key, Value}}-> %% set done; send to reference
 	    put( Key, Value );
 	{_From, stop, normal}->
-	    exit( stop )
+	    exit( stop );
+	_Other ->
+	    {error, {unknown_massage, _Other}}
     end,
     coordinator( InitN, Others ).
 %% TODO: need renewal of Waiting list
