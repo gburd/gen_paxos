@@ -24,7 +24,7 @@
 -export([version_info/0]).
 
 %% @doc functions for users.
--export([start/4, stop/1, get_result/1]).
+-export([start/5, stop/1, get_result/1]).
 
 %% @doc functions for gen_fsm.
 -export([init/1, handle_event/3, handle_sync_event/4,
@@ -37,7 +37,8 @@
 -define( DEFAULT_TIMEOUT, 3000 ).
 
 -record( state, {subject, n, value,
-		 all, quorum, players, init_n} ).
+		 all, quorum, current=0, others, init_n,
+		 return_pid} ).
 -record( event, {name,
 		 subject, n, value,
 		 from} ).
@@ -55,59 +56,67 @@ version_info()-> {?MODULE, 1}.
 %%                             no more than length of players.
 %%        any()              - value to suggest (prepare, propose).
 %%        other_players()    - member list of paxos_fsm group, which consists of agents, except oneself.
+%%        return_pid()       - when consensus got decided, result is to be sent to return_pid().
 %%
-%% @spec  start( subject_identifier(), n(), any(), other_players() ) -> Result
+%% @spec  start( subject_identifier(), n(), any(), other_players(), return_pid() ) -> Result
 %%    Result = {ok, Pid} | ignore | { error, Error }
 %%    Error  = {already_started, Pid } | term()
 %%    Pid = pid()
-start(S, InitN, V, Others) ->
+%%    
+start(S, InitN, V, Others, ReturnPid) ->
 %%    lists:map( fun(Other)-> net_adm:ping(Other) end, Others ),
+    %% setting data;
+    All = length(Others)+1,
+    Quorum = All / 2 ,
+    InitStateData = #state{ subject=S, n=InitN, value=V,
+			    all=All, quorum=Quorum, others=Others, init_n=InitN,
+			    return_pid=ReturnPid },
     gen_fsm:start_link( 
-      {global, {?MODULE, node(), S}}, %FsmName  %%{global, ?MODULE},       %{local, {?MODULE, S} },
+      generate_global_address( node(), S ), %FsmName  %%{global, ?MODULE},       %{local, {?MODULE, S} },
       ?MODULE,                        %Module
-      [S, InitN, V, Others],         %Args
+      [InitStateData],                %Args
       [{timeout, ?DEFAULT_TIMEOUT}]   %Options  %%, {debug, debug_info} ]
      ).
 
 %% @doc    Users can stop the FSM after or before PAXOS have make result.
 %% @spec   stop( subject_identifier() ) ->  ok
 stop(S) ->  %    io:format("~p ~p.~n",  [?MODULE, stopped]),
-    gen_fsm:send_all_state_event({global, {?MODULE,node(),S}}, stop).
+    gen_fsm:send_all_state_event( generate_global_address( node(),S ), stop).
 
 %% @doc    Users can get result as long as FSM remains.
 %% @spec   get_result( subject_identifier() ) -> Reply
 %%    Reply = {decided, V} | {OtherStateName, V}
 get_result(S)->
-    gen_fsm:sync_send_all_state_event({global, {?MODULE,node(),S}}, result).
+    gen_fsm:sync_send_all_state_event( generate_global_address( node(),S ), result).
 
 
 %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ %%
 %%   codes belows are for gen_fsm. users don't need.       %%
 %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ %%
 
-init([S, InitN, V, Others])->
-    io:format("~p~n", [[S, InitN, V, Others]]),
-    All = length(Others)+1,
-    Quorum = All / 2 ,
-    io:format("~p ~p.~n",  [?MODULE, started]),
+init([S, InitN, V, Others, ReturnPid])->
+    %% message; 
+    io:format("~p ~p: ~p~n", [?MODULE, started, [S, InitN, V, Others]]),
+    %% starting paxos_fsm...
     process_flag(trap_exit, true),
     {ok, 
      nil,
-     {{S, InitN, V},{All, Quorum, 0, Others, InitN} },
+     {{S, InitN, V},{All, Quorum, 0, Others, InitN}, Misc },
      ?DEFAULT_TIMEOUT
     }.
 
 broadcast(Others, S, Message)->
-    PaxosOthers = [ {global, {?MODULE, P, S}} || P <-  Others ],
+    PaxosOthers = [ generate_global_address( P, S ) || P <-  Others ],
     lists:map( fun(Other)-> gen_fsm:send_event( Other, Message ) end , %Timeout * 1) end,
  	       PaxosOthers ).
 
 send(Node, S, Message)->
 %    io:format("sending: ~p to ~p~n", [Message, {global, {?MODULE, Node, S}}] ),
-    gen_fsm:send_event( {global, {?MODULE, Node, S}}, Message ).
+    gen_fsm:send_event( generate_global_address( Node, S ), Message ).
 
-get_next_n( N , A )->
-    (( N div A )+1) * A.
+get_next_n( N , A )-> (( N div A )+1) * A.
+
+generate_global_address( Node, Subject )->  {global, {?MODULE, Node, Subject}}.
 
 %% =========================================
 %% states:
