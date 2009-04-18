@@ -36,12 +36,15 @@
 
 -define( DEFAULT_TIMEOUT, 3000 ).
 
+%% @doc state data for all machines,
+%%
 -record( state, {subject, n, value,
 		 all, quorum, current=0, others, init_n,
 		 return_pid} ).
--record( event, {name,
-		 subject, n, value,
-		 from} ).
+
+%% -record( event, {name,
+%% 		 subject, n, value,
+%% 		 from} ).
 
 %% @type subject_identifier() = atom()
 %% @type propose_number() = int()
@@ -49,7 +52,6 @@
 
 version_info()-> {?MODULE, 1}.
     
-
 %% @doc   Users call this function. Initializes PAXOS FSM.
 %%        subject_identifier - subject name. this names process, unless paxos_fsm can't find others.
 %%        n()                - paxos_fsm agent id. this must be unique in the paxos_fsm group.
@@ -66,15 +68,14 @@ version_info()-> {?MODULE, 1}.
 start(S, InitN, V, Others, ReturnPid) ->
 %%    lists:map( fun(Other)-> net_adm:ping(Other) end, Others ),
     %% setting data;
-    All = length(Others)+1,
-    Quorum = All / 2 ,
+    All = length(Others)+1,    Quorum = All / 2 ,
     InitStateData = #state{ subject=S, n=InitN, value=V,
 			    all=All, quorum=Quorum, others=Others, init_n=InitN,
 			    return_pid=ReturnPid },
     gen_fsm:start_link( 
       generate_global_address( node(), S ), %FsmName  %%{global, ?MODULE},       %{local, {?MODULE, S} },
       ?MODULE,                        %Module
-      [InitStateData],                %Args
+      InitStateData,                %Args
       [{timeout, ?DEFAULT_TIMEOUT}]   %Options  %%, {debug, debug_info} ]
      ).
 
@@ -94,15 +95,16 @@ get_result(S)->
 %%   codes belows are for gen_fsm. users don't need.       %%
 %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ %%
 
-init([S, InitN, V, Others, ReturnPid])->
+%init([S, InitN, V, Others, ReturnPid])->
+init(InitStateData)->
     %% message; 
-    io:format("~p ~p: ~p~n", [?MODULE, started, [S, InitN, V, Others]]),
+    io:format("~p ~p: ~p~n", [?MODULE, started, InitStateData]),
     %% starting paxos_fsm...
     process_flag(trap_exit, true),
     {ok, 
-     nil,
-     {{S, InitN, V},{All, Quorum, 0, Others, InitN}, Misc },
-     ?DEFAULT_TIMEOUT
+     nil,  %% initial statename 
+     InitStateData,     %%{{S, InitN, V},{All, Quorum, 0, Others, InitN}, Misc }, %% initial state data
+     ?DEFAULT_TIMEOUT %% initial state timeout
     }.
 
 broadcast(Others, S, Message)->
@@ -138,16 +140,18 @@ generate_global_address( Node, Subject )->  {global, {?MODULE, Node, Subject}}.
 
 %% =========================================
 %%  - nil ( master lease time out )
-nil( {prepare,  {S, N, V, From}},  {{S, Nc, _Vc}, Nums} ) when N > Nc ->
+nil( {prepare,  {S, N, V, From}},  StateData) when N > StateData#state.n -> 
+%    {{S, Nc, _Vc}, Nums} ) when N > Nc ->
 %    gen_fsm:sync_send_event(From, {prepare_result, {0, nil}}),
     send(From, S, {prepare_result, {S, 0, nil, node()}}),
-    {next_state, 
-     acceptor, {{S, N, V}, Nums}, 
+    NewStateData = StateData#state{n=N},
+    {next_state, acceptor, NewStateData, %{{S, N, V}, Nums}, 
      ?DEFAULT_TIMEOUT};
-nil( {prepare,  {S, N, _V, From}},  {{S, Nc, Vc}, Nums} ) when N < Nc ->
+nil( {prepare,  {S, N, _V, From}}, StateData) when N < StateData#state.n ->  %{{S, Nc, Vc}, Nums} ) when N < Nc ->
 %    gen_fsm:sync_send_event(From, {prepare_result, {0, nil}}),
     send(From, S, {prepare_result, {S, Nc, Vc, node()}}),
-    {next_state, nil, {{S, Nc, Vc}, Nums}, ?DEFAULT_TIMEOUT};
+    {next_state, nil, StateData, ?DEFAULT_TIMEOUT};
+%    {next_state, nil, {{S, Nc, Vc}, Nums}, ?DEFAULT_TIMEOUT};
 
 %% nil( {decide,  {S, N, V, From}},  {{S, Nc, Vc}, Nums} ) when N < Nc -> % always ignore
 %%     {next_state, nil, {{S, Nc, Vc}, Nums}, ?DEFAULT_TIMEOUT};
