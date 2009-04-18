@@ -76,8 +76,7 @@ ask(Key, Value)->
 	    Other
     end.
 
-clear()->
-    clear( ?DEFAULT_COORDINATOR_NUM ).
+clear()->    clear( ?DEFAULT_COORDINATOR_NUM ).
 
 clear(0)-> ok;
 clear(N)-> 
@@ -103,4 +102,3 @@ coordinator( InitN, Others )->
 	    {error, {unknown_massage, _Other}}
     end,
     coordinator( InitN, Others ).
-%% TODO: need renewal of Waiting list
