@@ -42,9 +42,7 @@ version_info()-> {?MODULE, 1}.
 start_link( InitN, Others )->
     start_link( InitN, Others, ?DEFAULT_COORDINATOR_NUM ).
 
-
-start_link( InitN, Others, 0 )->
-    ok;
+start_link( InitN, Others, 0 )->      ok;
 start_link( InitN, Others, NumCoordinators )->
     Pid = spawn_link( ?MODULE,  coordinator, [InitN, Others] ),
     register( get_process_name_from_int(NumCoordinators), Pid ),

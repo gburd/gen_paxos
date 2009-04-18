@@ -60,12 +60,12 @@ version_info()-> {?MODULE, 1}.
 %%    Result = {ok, Pid} | ignore | { error, Error }
 %%    Error  = {already_started, Pid } | term()
 %%    Pid = pid()
-start(S, InitN, V, Players) ->
-    lists:map( fun(Player)-> net_adm:ping(Player) end, Players ),
+start(S, InitN, V, Others) ->
+    lists:map( fun(Other)-> net_adm:ping(Other) end, Others ),
     gen_fsm:start_link( 
       {global, {?MODULE, node(), S}}, %FsmName  %%{global, ?MODULE},       %{local, {?MODULE, S} },
       ?MODULE,                        %Module
-      [S, InitN, V, Players],         %Args
+      [S, InitN, V, Others],         %Args
       [{timeout, ?DEFAULT_TIMEOUT}]   %Options  %%, {debug, debug_info} ]
      ).
 
@@ -85,22 +85,22 @@ get_result(S)->
 %%   codes belows are for gen_fsm. users don't need.       %%
 %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ %%
 
-init([S, InitN, V, Players])->
-    io:format("~p~n", [[S, InitN, V, Players]]),
-    All = length(Players)+1,
+init([S, InitN, V, Others])->
+    io:format("~p~n", [[S, InitN, V, Others]]),
+    All = length(Others)+1,
     Quorum = All / 2 ,
     io:format("~p ~p.~n",  [?MODULE, started]),
     process_flag(trap_exit, true),
     {ok, 
      nil,
-     {{S, InitN, V},{All, Quorum, 0, Players, InitN} },
+     {{S, InitN, V},{All, Quorum, 0, Others, InitN} },
      ?DEFAULT_TIMEOUT
     }.
 
-broadcast(Players, S, Message)->
-    PaxosPlayers = [ {global, {?MODULE, P, S}} || P <-  Players ],
-    lists:map( fun(Player)-> gen_fsm:send_event( Player, Message ) end , %Timeout * 1) end,
- 	       PaxosPlayers ).
+broadcast(Others, S, Message)->
+    PaxosOthers = [ {global, {?MODULE, P, S}} || P <-  Others ],
+    lists:map( fun(Other)-> gen_fsm:send_event( Other, Message ) end , %Timeout * 1) end,
+ 	       PaxosOthers ).
 
 send(Node, S, Message)->
 %    io:format("sending: ~p to ~p~n", [Message, {global, {?MODULE, Node, S}}] ),
@@ -125,7 +125,7 @@ get_next_n( N , A )->
 %%  - timeout
 %%  - decide
 %% Data:
-%%  - {{Sc, Nc, Vc}, {All, Quorum, Current, Players, InitN}}
+%%  - {{Sc, Nc, Vc}, {All, Quorum, Current, Others, InitN}}
 
 %% =========================================
 %%  - nil ( master lease time out )
@@ -146,13 +146,13 @@ nil( {decide,  {S, N, V, _From}}, StateData ) -> % when N == Nc
     {_OldNums , Members} = StateData,
     {next_state, decided, {{S, N, V}, Members}, ?DEFAULT_TIMEOUT};
 
-nil( timeout, {{S, N, V}, {All, Quorum, _Current, Players, InitN}} )->
+nil( timeout, {{S, N, V}, {All, Quorum, _Current, Others, InitN}} )->
     % send prepare ! to all members.
     NewN = get_next_n( N, All ) + InitN,
-    io:format( "starting paxos ... ~p. ~n", [[S, NewN, V, All, Quorum, _Current, Players, InitN]]),
-    Result = broadcast( Players, S, {prepare, {S,NewN,V, node()}} ),
+    io:format( "starting paxos ... ~p. ~n", [[S, NewN, V, All, Quorum, _Current, Others, InitN]]),
+    Result = broadcast( Others, S, {prepare, {S,NewN,V, node()}} ),
     io:format( "broadcast: ~p. ~n", [Result]),
-    {next_state, preparing, {{S, NewN, V}, {All, Quorum, 1, Players, InitN}}, ?DEFAULT_TIMEOUT};
+    {next_state, preparing, {{S, NewN, V}, {All, Quorum, 1, Others, InitN}}, ?DEFAULT_TIMEOUT};
 
 nil(UnknownEvent, StateData)-> % ignore
     io:format( "unknown event: ~p,  ~p : all ignored.~n", [UnknownEvent, StateData] ),
@@ -177,23 +177,23 @@ preparing( {prepare_result,  {S, N, V, From}},  {{S, Nc, _Vc}, Nums} ) when N > 
     {next_state, acceptor, {{S, N, V}, Nums}, ?DEFAULT_TIMEOUT};
 
 preparing( {prepare_result,  {S, _N, _V, _From}}, 
-	   {{S, Nc, Vc}, {All, Quorum, Current, Players, InitN}} ) when Current > Quorum->
-    broadcast( Players, S, {propose, {S, Nc, Vc}, node()} ),
-    {next_state, proposing, {{S, Nc, Vc}, {All, Quorum, 1, Players, InitN}}, ?DEFAULT_TIMEOUT};
+	   {{S, Nc, Vc}, {All, Quorum, Current, Others, InitN}} ) when Current > Quorum->
+    broadcast( Others, S, {propose, {S, Nc, Vc}, node()} ),
+    {next_state, proposing, {{S, Nc, Vc}, {All, Quorum, 1, Others, InitN}}, ?DEFAULT_TIMEOUT};
 
-preparing( {prepare_result,  {S, N, V, _From}}, {{S, N, V}, {All, Quorum, Current, Players, InitN}} )->
-    {next_state, proposing, {{S, N, V}, {All, Quorum, Current+1, Players, InitN}}, ?DEFAULT_TIMEOUT};
+preparing( {prepare_result,  {S, N, V, _From}}, {{S, N, V}, {All, Quorum, Current, Others, InitN}} )->
+    {next_state, proposing, {{S, N, V}, {All, Quorum, Current+1, Others, InitN}}, ?DEFAULT_TIMEOUT};
 
-preparing( {prepare_result,  {S, N, _V, _From}}, {{S, Nc, Vc}, {All, Quorum, Current, Players, InitN}} ) when N < Nc->
+preparing( {prepare_result,  {S, N, _V, _From}}, {{S, Nc, Vc}, {All, Quorum, Current, Others, InitN}} ) when N < Nc->
     io:format("recvd: ~p; (Current, Quorum)=(~p,~p)~n", [{{S,N,_V,_From}, {S, Nc, Vc }}, Current, Quorum]),
     case (Current + 1 > Quorum) of
 	true -> 
 	    io:format("got quorum at prepare!~n", []),
-	    broadcast( Players, S, {propose, {S, Nc, Vc, node()}} ),
+	    broadcast( Others, S, {propose, {S, Nc, Vc, node()}} ),
 	    io:format("proposing ~p...~n", [{propose, {S,Nc,Vc,node()}}]),
-	    {next_state, proposing, {{S, Nc, Vc}, {All, Quorum, 1, Players, InitN}}, ?DEFAULT_TIMEOUT};
+	    {next_state, proposing, {{S, Nc, Vc}, {All, Quorum, 1, Others, InitN}}, ?DEFAULT_TIMEOUT};
 	false ->
-	    {next_state, preparing, {{S, Nc, Vc}, {All, Quorum, Current+1, Players, InitN}}, ?DEFAULT_TIMEOUT}
+	    {next_state, preparing, {{S, Nc, Vc}, {All, Quorum, Current+1, Others, InitN}}, ?DEFAULT_TIMEOUT}
     end;
 
 %% preparing( {propose,  {S, N, V, From}},  {{S, Nc, Vc}, Nums} ) when N < Nc ->
@@ -215,8 +215,8 @@ preparing( {propose_result,  {S, N, V, From}},  {{S, Nc, _Vc}, Nums} ) when N > 
 preparing( {decide,  {S, N, V, _From}}, {{S, _Nc, _Vc}, Nums} ) ->
     {next_state, decided, {{S, N, V}, Nums}, ?DEFAULT_TIMEOUT};
 
-preparing( timeout, {{S, N, V},  {All, Quorum, _Current, Players, InitN} } )->
-    {next_state, nil, {{S, N, V}, {All, Quorum, 0, Players, InitN}}, ?DEFAULT_TIMEOUT}.
+preparing( timeout, {{S, N, V},  {All, Quorum, _Current, Others, InitN} } )->
+    {next_state, nil, {{S, N, V}, {All, Quorum, 0, Others, InitN}}, ?DEFAULT_TIMEOUT}.
 
 %% =========================================
 %%  - proposing
@@ -247,15 +247,15 @@ proposing( {propose,  {S, N, V, From}},  {{S, Nc, Vc}, Nums} ) when N > Nc ->
 %% proposing( {propose_result,  {S, N, V, From}},  {{S, Nc, Vc}, Nums} ) when N < Nc ->
 %%     {next_state, hoge, {{S, Nc, Vc}, Nums}, ?DEFAULT_TIMEOUT};
 proposing( {propose_result,  {S, N, V, _From}}, 
-	   {{S, N, V}, {All, Quorum, Current, Players, InitN}} ) when (Quorum > Current+1) -> % when N == Nc
-    {next_state, proposing, {{S,N,V},{All, Quorum, Current+1, Players, InitN}}, ?DEFAULT_TIMEOUT };
+	   {{S, N, V}, {All, Quorum, Current, Others, InitN}} ) when (Quorum > Current+1) -> % when N == Nc
+    {next_state, proposing, {{S,N,V},{All, Quorum, Current+1, Others, InitN}}, ?DEFAULT_TIMEOUT };
 
 %% Got quorum!!!
 proposing( {propose_result,  {S, N, V, _From}},
-	   {{S, N, V}, {All, Quorum, Current, Players, InitN}} )-> % when N == Nc
+	   {{S, N, V}, {All, Quorum, Current, Others, InitN}} )-> % when N == Nc
     io:format("got quorum at proposing!!~n", []),
-    broadcast( Players, S, {decide, {S, N, V, node()}} ),
-    {next_state, decided, {{S,N,V},{All, Quorum, Current+1, Players, InitN}}, ?DEFAULT_TIMEOUT };
+    broadcast( Others, S, {decide, {S, N, V, node()}} ),
+    {next_state, decided, {{S,N,V},{All, Quorum, Current+1, Others, InitN}}, ?DEFAULT_TIMEOUT };
 
 proposing( {propose_result,  {S, N, V, From}},  {{S, Nc, _Vc}, Nums} ) when N > Nc ->
     send( From,  S, {propose_result, {S, N, V, node()}}),
@@ -268,9 +268,9 @@ proposing( {propose_result,  {S, N, V, From}},  {{S, Nc, _Vc}, Nums} ) when N > 
 proposing( {decide,  {S, N, V, _From}}, {{S, Nc, _Vc}, Nums} ) when N >= Nc ->
     {next_state, decided, {{S, N, V}, Nums}, ?DEFAULT_TIMEOUT};
 
-proposing( timeout, {{S, N, V}, {All, Quorum, _Current, Players, InitN}} )->
+proposing( timeout, {{S, N, V}, {All, Quorum, _Current, Others, InitN}} )->
     io:format("proposing timeout: ~p (N,_Current)=(~p)~n" , [{propose},{ N, _Current}]),
-    {next_state, nil, {{S, N, V}, {All, Quorum, 1, Players, InitN}}, ?DEFAULT_TIMEOUT};
+    {next_state, nil, {{S, N, V}, {All, Quorum, 1, Others, InitN}}, ?DEFAULT_TIMEOUT};
 
 proposing( _Event, StateData) ->
     {next_state, proposing, StateData}.
@@ -318,9 +318,9 @@ acceptor( {propose,  {S, N, V, From}},  {{S, Nc, Vc}, Nums} ) when N > Nc ->
 acceptor( {decide,  {S, N, V, _From}}, {{S, Nc, _Vc}, Nums} ) when N >= Nc ->
     {next_state, decided, {{S, N, V}, Nums}, ?DEFAULT_TIMEOUT};
 
-acceptor( timeout, {{S, N, V}, {All, Quorum, _Current, Players, InitN} })->
+acceptor( timeout, {{S, N, V}, {All, Quorum, _Current, Others, InitN} })->
     io:format("acceptor timeout: ~p (N,V)=(~p)~n" , [{propose},{ N, V}]),
-    {next_state, nil, {{S, N, V}, {All, Quorum, 1, Players, InitN}}, ?DEFAULT_TIMEOUT};
+    {next_state, nil, {{S, N, V}, {All, Quorum, 1, Others, InitN}}, ?DEFAULT_TIMEOUT};
 
 acceptor( _Event, StateData) ->
     io:format("acceptor unknown event: ~p ,~p~n" , [_Event , StateData]),
@@ -366,8 +366,8 @@ learner( {propose,  {S, N, V, From}},  {{S, Nc, _Vc}, Nums} ) when N > Nc ->
 learner( {decide,  {S, N, V, _From}}, {{S, Nc, _Vc}, Nums} ) when N >= Nc ->
     {next_state, decided, {{S, N, V}, Nums}, ?DEFAULT_TIMEOUT};
 
-learner( timeout, {{S, N, V}, {All, Quorum, _Current, Players, InitN}} )->
-    {next_state, nil, {{S, N, V}, {All, Quorum, 0, Players, InitN}}, ?DEFAULT_TIMEOUT};
+learner( timeout, {{S, N, V}, {All, Quorum, _Current, Others, InitN}} )->
+    {next_state, nil, {{S, N, V}, {All, Quorum, 0, Others, InitN}}, ?DEFAULT_TIMEOUT};
 
 learner( _Event, StateData )->
     {next_state, learner, StateData }.
