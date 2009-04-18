@@ -262,46 +262,52 @@ proposing( {prepare,  {S, N, V, From}},  StateData) when N > StateData#state.n -
 %%     {next_state, hoge, {{S, Nc, Vc}, Nums}, ?DEFAULT_TIMEOUT};
 %% proposing( {prepare_result,  {S, N, V, From}},  {{S, N, V}, Nums} ) -> % when N == Nc
 %%     {next_state, hoge, {{S, N, V}, Nums}, ?DEFAULT_TIMEOUT};
-proposing( {prepare_result,  {S, N, V, From}},  {{S, Nc, Vc}, Nums} ) when N > Nc ->
-    send( From, S, {prepare_result, {S, Nc, Vc, node()}}),
-    {next_state, acceptor, {{S, N, V}, Nums}, ?DEFAULT_TIMEOUT};
-%!
+proposing( {prepare_result,  {S, N, V, From}},  StateData) when N > StateData#state.n -> %{{S, Nc, Vc}, Nums} ) when N > Nc ->
+    send( From, S, {prepare_result, {S, StateData#state.n, StateData#state.value, node()}}),
+    {next_state, acceptor, StateData#state{n=N, value=V}, ?DEFAULT_TIMEOUT};
 
 %% proposing( {propose,  {S, N, V, From}},  {{S, Nc, Vc}, Nums} ) when N < Nc ->
 %%     {next_state, hoge, {{S, Nc, Vc}, Nums}, ?DEFAULT_TIMEOUT};
 %% proposing( {propose,  {S, N, V, From}},  {{S, N, V}, Nums} ) -> % when N == Nc
 %%     {next_state, hoge, {{S, N, V}, Nums}, ?DEFAULT_TIMEOUT};
-proposing( {propose,  {S, N, V, From}},  {{S, Nc, Vc}, Nums} ) when N > Nc ->
-    send( From, S, {propose_result, {S, Nc, Vc, node()}}),
-    {next_state, learner, {{S, N, V}, Nums}, ?DEFAULT_TIMEOUT};
+proposing( {propose,  {S, N, V, From}},  StateData) when N > StateData#state.n -> %{{S, Nc, Vc}, Nums} ) when N > Nc ->
+    send( From, S, {propose_result, {S, StateData#state.n, StateData#state.value, node()}}),
+    {next_state, learner, StateData#state{n=N, value=V}, ?DEFAULT_TIMEOUT};
 
 %% proposing( {propose_result,  {S, N, V, From}},  {{S, Nc, Vc}, Nums} ) when N < Nc ->
 %%     {next_state, hoge, {{S, Nc, Vc}, Nums}, ?DEFAULT_TIMEOUT};
-proposing( {propose_result,  {S, N, V, _From}}, 
-	   {{S, N, V}, {All, Quorum, Current, Others, InitN}} ) when (Quorum > Current+1) -> % when N == Nc
-    {next_state, proposing, {{S,N,V},{All, Quorum, Current+1, Others, InitN}}, ?DEFAULT_TIMEOUT };
+
+%% proposing( {propose_result,  {S, N, V, _From}}, 
+%% 	   {{S, N, V}, {All, Quorum, Current, Others, InitN}} ) when (Quorum > Current+1) -> % when N == Nc
+proposing( {propose_result,  {S, N, V, _From}}, StateData)
+  when N==StateData#state.n, V==StateData#state.value, StateData#state.quorum > StateData#state.current+1 ->
+    Current = StateData#state.current,
+    {next_state, proposing, StateData#state{current=Current+1}, ?DEFAULT_TIMEOUT };
 
 %% Got quorum!!!
-proposing( {propose_result,  {S, N, V, _From}},
-	   {{S, N, V}, {All, Quorum, Current, Others, InitN}} )-> % when N == Nc
+%% proposing( {propose_result,  {S, N, V, _From}},
+%% 	   {{S, N, V}, {All, Quorum, Current, Others, InitN}} )-> % when N == Nc
+proposing( {propose_result,  {S, N, V, _From}}, StateData) when N==StateData#state.n, V==StateData#state.value->
     io:format("got quorum at proposing!!~n", []),
     broadcast( Others, S, {decide, {S, N, V, node()}} ),
-    {next_state, decided, {{S,N,V},{All, Quorum, Current+1, Others, InitN}}, ?DEFAULT_TIMEOUT };
+    Current=StateData#state.current,
+    {next_state, decided, StateData#state{current=Current+1}, ?DEFAULT_TIMEOUT };
 
-proposing( {propose_result,  {S, N, V, From}},  {{S, Nc, _Vc}, Nums} ) when N > Nc ->
+proposing( {propose_result,  {S, N, V, From}}, StateData) when N > StateData#state.n -> % {{S, Nc, _Vc}, Nums} ) when N > Nc ->
     send( From,  S, {propose_result, {S, N, V, node()}}),
-    {next_state, learner, {{S, N, V}, Nums}, ?DEFAULT_TIMEOUT};
+    {next_state, learner, StateData#state{n=N, value=V}, ?DEFAULT_TIMEOUT};
 
 %% proposing( {decide,  {S, N, V, From}},  {{S, Nc, Vc}, Nums} ) when N < Nc -> % always ignore
 %%     {next_state, proposing, {{S, Nc, Vc}, Nums}, ?DEFAULT_TIMEOUT};
 %% proposing( {decide,  {S, N, V, From}},  {{S, N, V}, Nums} ) -> % when N == Nc
 %%     {next_state, decided, {{S, N, V}, Nums}, ?DEFAULT_TIMEOUT};
-proposing( {decide,  {S, N, V, _From}}, {{S, Nc, _Vc}, Nums} ) when N >= Nc ->
-    {next_state, decided, {{S, N, V}, Nums}, ?DEFAULT_TIMEOUT};
 
-proposing( timeout, {{S, N, V}, {All, Quorum, _Current, Others, InitN}} )->
-    io:format("proposing timeout: ~p (N,_Current)=(~p)~n" , [{propose},{ N, _Current}]),
-    {next_state, nil, {{S, N, V}, {All, Quorum, 1, Others, InitN}}, ?DEFAULT_TIMEOUT};
+proposing( {decide,  {S, N, V, _From}}, StateData) when N >= StateData#state.n-> %{{S, Nc, _Vc}, Nums} ) when N >= Nc ->
+    {next_state, decided, StateData#state{n=N, value=V}, ?DEFAULT_TIMEOUT};
+
+proposing( timeout, StateData)-> %{{S, N, V}, {All, Quorum, _Current, Others, InitN}} )->
+    io:format("proposing timeout: ~p  , StateData=~p~n" , [propose, StateData]),
+    {next_state, nil, StateData#state{current=1}, ?DEFAULT_TIMEOUT};
 
 proposing( _Event, StateData) ->
     {next_state, proposing, StateData}.
@@ -309,14 +315,15 @@ proposing( _Event, StateData) ->
 
 %% =========================================
 %%  - acceptor
-acceptor( {prepare,  {S, N, _V, From}},  {{S, Nc, Vc}, Nums} ) when N < Nc ->
-    send( From, S, { prepare_result, {S, Nc, Vc, node()}} ),
-    {next_state, acceptor, {{S, Nc, Vc}, Nums}, ?DEFAULT_TIMEOUT};
+acceptor( {prepare,  {S, N, _V, From}},  StateData) when N < StateData#state.n-> %{{S, Nc, Vc}, Nums} ) when N < Nc ->
+    send( From, S, { prepare_result, {S, StateData#state.n, StateData#state.value, node()}} ),
+    {next_state, acceptor, StateData, ?DEFAULT_TIMEOUT};
+
 %% acceptor( {prepare,  {S, N, V, From}},  {{S, N, V}, Nums} ) -> % when N == Nc
 %%     {next_state, acceptor, {{S, N, V}, Nums}, ?DEFAULT_TIMEOUT};
-acceptor( {prepare,  {S, N, V, From}},  {{S, Nc, Vc}, Nums} ) when N >= Nc ->
-    send( From, S, { prepare_result, {S, Nc, Vc, node()}} ),
-    {next_state, acceptor, {{S, N, V}, Nums}, ?DEFAULT_TIMEOUT};
+acceptor( {prepare,  {S, N, V, From}},  StateData ) when N >= StateData#state.n ->
+    send( From, S, { prepare_result, {S, StateData#state.n, StateData#state.value, node()}} ),
+    {next_state, acceptor, StateData#state{n=N, value=V}, ?DEFAULT_TIMEOUT};
 
 %% acceptor( {prepare_result,  {S, N, V, From}},  {{S, Nc, Vc}, Nums} ) when N < Nc ->
 %%     {next_state, hoge, {{S, Nc, Vc}, Nums}, ?DEFAULT_TIMEOUT};
@@ -325,15 +332,15 @@ acceptor( {prepare,  {S, N, V, From}},  {{S, Nc, Vc}, Nums} ) when N >= Nc ->
 %% acceptor( {prepare_result,  {S, N, V, From}},  {{S, Nc, Vc}, Nums} ) when N > Nc ->
 %%     {next_state, hoge, {{S, N, V}, Nums}, ?DEFAULT_TIMEOUT};
 
-acceptor( {propose,  {S, N, _V, _From}},  {{S, Nc, Vc}, Nums} ) when N < Nc ->
-    io:format("bad state: ~p (N,Nc)=(~p)~n" , [{propose},{ N, Nc}]),
-    {next_state, propose, {{S, Nc, Vc}, Nums}, ?DEFAULT_TIMEOUT};
-acceptor( {propose,  {S, N, V, From}},  {{S, N, V}, Nums} ) -> % when N == Nc
-    send( From, S, {propose_result , {S, N,  V,  node() }} ),
-    {next_state, learner, {{S, N, V}, Nums}, ?DEFAULT_TIMEOUT};
-acceptor( {propose,  {S, N, V, From}},  {{S, Nc, Vc}, Nums} ) when N > Nc ->
-    send( From, S, {propose_result , {S, Nc, Vc, node() }} ),
-    {next_state, learner, {{S, N, V}, Nums}, ?DEFAULT_TIMEOUT};
+acceptor( {propose,  {S, N, _V, _From}},  StateData) when N < StateData#state.n -> %{{S, Nc, Vc}, Nums} ) when N < Nc ->
+    io:format("bad state: ~p (N,Nc)=(~p)~n" , [{propose},{ N, StateData#state.n}]),
+    {next_state, propose, StateData, ?DEFAULT_TIMEOUT};
+acceptor( {propose,  {S, N, V, From}},  StateData ) when N > StateData#state.n ->
+    send( From, S, {propose_result , {S, StateData#state.n, StateData#state.value, node() }} ),
+    {next_state, learner, StateData#state{n=N, value=V}, ?DEFAULT_TIMEOUT};
+acceptor( {propose,  {S, N, V, From}},  StateData)-> % when N == Nc
+    send( From, S, {propose_result , {S, StateData#state.n, StateData#state.value,  node() }} ),
+    {next_state, learner, StateData, ?DEFAULT_TIMEOUT};
 
 %% acceptor( {propose_result,  {S, N, V, From}},  {{S, Nc, Vc}, Nums} ) when N < Nc ->
 %%     {next_state, hoge, {{S, Nc, Vc}, Nums}, ?DEFAULT_TIMEOUT};
@@ -346,12 +353,12 @@ acceptor( {propose,  {S, N, V, From}},  {{S, Nc, Vc}, Nums} ) when N > Nc ->
 %%     {next_state, acceptor, {{S, Nc, Vc}, Nums}, ?DEFAULT_TIMEOUT};
 %% acceptor( {decide,  {S, N, V, From}},  {{S, N, V}, Nums} ) -> % when N == Nc
 %%     {next_state, decided, {{S, N, V}, Nums}, ?DEFAULT_TIMEOUT};
-acceptor( {decide,  {S, N, V, _From}}, {{S, Nc, _Vc}, Nums} ) when N >= Nc ->
-    {next_state, decided, {{S, N, V}, Nums}, ?DEFAULT_TIMEOUT};
+acceptor( {decide,  {S, N, V, _From}}, StateData) when N >= StateData#state.n -> %{{S, Nc, _Vc}, Nums} ) when N >= Nc ->
+    {next_state, decided, StateData#state{n=N, value=V}, ?DEFAULT_TIMEOUT};
 
-acceptor( timeout, {{S, N, V}, {All, Quorum, _Current, Others, InitN} })->
-    io:format("acceptor timeout: ~p (N,V)=(~p)~n" , [{propose},{ N, V}]),
-    {next_state, nil, {{S, N, V}, {All, Quorum, 1, Others, InitN}}, ?DEFAULT_TIMEOUT};
+acceptor( timeout, StateData)-> {{S, N, V}, {All, Quorum, _Current, Others, InitN} })->
+    io:format("acceptor timeout: ~p (N,V)=(~p)~n" , [{propose},{StateData#state.n, StateData#state.value}]),
+    {next_state, nil, StateData#state{current=1}, ?DEFAULT_TIMEOUT};
 
 acceptor( _Event, StateData) ->
     io:format("acceptor unknown event: ~p ,~p~n" , [_Event , StateData]),
@@ -363,25 +370,25 @@ acceptor( _Event, StateData) ->
 %%     {next_state, hoge, {{S, Nc, Vc}, Nums}, ?DEFAULT_TIMEOUT};
 %% learner( {prepare,  {S, N, V, From}},  {{S, N, V}, Nums} ) -> % when N == Nc
 %%     {next_state, hoge, {{S, N, V}, Nums}, ?DEFAULT_TIMEOUT};
-learner( {prepare,  {S, N, V, From}},  {{S, Nc, _Vc}, Nums} ) when N > Nc ->
+learner( {prepare,  {S, N, V, From}}, StateData) when N > StateData#state.n -> % {{S, Nc, _Vc}, Nums} ) when N > Nc ->
     send( From, S, {prepare_result, {S, N, V, node()}} ),
-    {next_state, acceptor, {{S, N, V}, Nums}, ?DEFAULT_TIMEOUT};
+    {next_state, acceptor, StateData#state{n=N, value=V}, ?DEFAULT_TIMEOUT};
 
-learner( {prepare_result,  {S, _N, _V, _From}}, {{S, Nc, Vc}, Nums} )-> % when N < Nc ->
-    {next_state, learner, {{S, Nc, Vc}, Nums}, ?DEFAULT_TIMEOUT };
+learner( {prepare_result,  {S, _N, _V, _From}}, StateData )-> % when N < Nc ->
+    {next_state, learner, StateData, ?DEFAULT_TIMEOUT };
 %    {next_state, hoge, {{S, Nc, Vc}, Nums}, ?DEFAULT_TIMEOUT};
 %% learner( {prepare_result,  {S, N, V, From}},  {{S, N, V}, Nums} ) -> % when N == Nc
 %%     {next_state, hoge, {{S, N, V}, Nums}, ?DEFAULT_TIMEOUT};
 %% learner( {prepare_result,  {S, N, V, From}},  {{S, Nc, Vc}, Nums} ) when N > Nc ->
 %%     {next_state, hoge, {{S, N, V}, Nums}, ?DEFAULT_TIMEOUT};
 
-learner( {propose,  {S, N, _V, _From}}, {{S, Nc, Vc}, Nums} ) when N < Nc ->
-    {next_state, learner, {{S, Nc, Vc}, Nums}, ?DEFAULT_TIMEOUT};
+learner( {propose,  {S, N, _V, _From}}, StateData) when N < StateData#state.n -> %{{S, Nc, Vc}, Nums} ) when N < Nc ->
+    {next_state, learner, StateData, ?DEFAULT_TIMEOUT};
 %% learner( {propose,  {S, N, V, _From}}, {{S, N, V}, Nums} ) -> % when N == Nc
 %%     {next_state, hoge, {{S, N, V}, Nums}, ?DEFAULT_TIMEOUT};
-learner( {propose,  {S, N, V, From}},  {{S, Nc, _Vc}, Nums} ) when N > Nc ->
+learner( {propose,  {S, N, V, From}},  StateData) when N > StateData#state.n -> %{{S, Nc, _Vc}, Nums} ) when N > Nc ->
     send( From, S, {propose_result, {S, N, V, node()}}),
-    {next_state, learner, {{S, N, V}, Nums}, ?DEFAULT_TIMEOUT};
+    {next_state, learner, StateData#state{n=N, value=V}, ?DEFAULT_TIMEOUT};
 
 %% learner( {propose_result,  {S, N, V, From}},  {{S, Nc, Vc}, Nums} ) when N < Nc ->
 %%     {next_state, hoge, {{S, Nc, Vc}, Nums}, ?DEFAULT_TIMEOUT};
@@ -394,15 +401,14 @@ learner( {propose,  {S, N, V, From}},  {{S, Nc, _Vc}, Nums} ) when N > Nc ->
 %%     {next_state, learner, {{S, Nc, Vc}, Nums}, ?DEFAULT_TIMEOUT};
 %% learner( {decide,  {S, N, V, _From}}, {{S, N, V}, Nums} ) -> % when N == Nc
 %%     {next_state, decided, {{S, N, V}, Nums}, ?DEFAULT_TIMEOUT};
-learner( {decide,  {S, N, V, _From}}, {{S, Nc, _Vc}, Nums} ) when N >= Nc ->
-    {next_state, decided, {{S, N, V}, Nums}, ?DEFAULT_TIMEOUT};
+learner( {decide,  {S, N, V, _From}}, StateData) when N >= StateData#state.n -> %{{S, Nc, _Vc}, Nums} ) when N >= Nc ->
+    {next_state, decided, StateData#state{n=N, value=V}, ?DEFAULT_TIMEOUT};
 
-learner( timeout, {{S, N, V}, {All, Quorum, _Current, Others, InitN}} )->
-    {next_state, nil, {{S, N, V}, {All, Quorum, 0, Others, InitN}}, ?DEFAULT_TIMEOUT};
+learner( timeout, StateData)-> %{{S, N, V}, {All, Quorum, _Current, Others, InitN}} )->
+    {next_state, nil, StateData#state{current=0}, ?DEFAULT_TIMEOUT};
 
 learner( _Event, StateData )->
     {next_state, learner, StateData }.
-
 
 %% =========================================
 %%  - decided ( within master lease time )
@@ -422,16 +428,18 @@ learner( _Event, StateData )->
 %% decided( {decide,  {S, N, V, _From}}, {{S, Nc, _Vc}, Nums} ) when N > Nc ->
 %%     {next_state, decided, {{S, N, V}, Nums}, ?DEFAULT_TIMEOUT};
 
-decided( {_Message, {S,_N,_V, From}}, {{S, N, V}, Nums})->
-    send( From, S, {decide, {S,N,V,node()}} ),
-    {next_state, decided, {{S,N,V},Nums} };
+decided( {_Message, {S,_N,_V, From}}, StateData)->
+    send( From, S, {decide, {S,StateData#state.n, StateData#state.value,node()}} ),
+    {next_state, decided, StateData };
 
-decided( timeout, {{S, N, V}, Nums} )->
+decided( timeout,  StateData )->
     io:format( "paxos mediation done. decided: ~p - (N=~p)~n", [V, N] ),
-    {next_state, decided, {{S, N, V}, Nums}}.
+    {next_state, decided, StateData}. %{{S, N, V}, Nums}}.
 %    {stop, normal, {{S,N,V},Nums}}.
 
-
+%% @doc send back message to originator to share the consensus value.
+callback(S, V, ReturnPid)->
+    ReturnPid ! {self(), set, {S, V}}.
 
 code_change(_,_,_,_)->
     ok.
