@@ -63,8 +63,7 @@ README: gen_paxos/paxos_fsm
  - automation of basic tests.
  - to expand coverege of tested combinations of states.
    - because paxos is complex FSM as a whole
- - to create a gen_leader compatible interface?
-   - gen_leader http://www.cs.chalmers.se/~hanssv/leader_election/
+ - to create a gen_leader[2] compatible interface?
  - gen_serverize
  - master election module with lease time, with replication consistency
  - performance test
@@ -79,6 +78,11 @@ README: gen_paxos/paxos_fsm
  has paxos coordinator process which can be SPOF in a really distributed
  environment, which is solved in gen_paxos.
 
+ - gen_leader ( http://www.cs.chalmers.se/~hanssv/leader_election/ )
+ gen_leader is a master election module whose behaviour looks like gen_server.
+ It's siginificant in churn environment (maybe) and small rate of mis-election,
+ controllability with proirity. Valid information and details are in [2].
+
 
 * Appendix
  - if you find a bug or written a patch/improvement, tell me through any path.
@@ -89,3 +93,8 @@ README: gen_paxos/paxos_fsm
  "Paxos Made Live – An Engineering Perspective". PODC '07:
  26th ACM Symposium on Principles of Distributed Computing.
  http://labs.google.com/papers/paxos_made_live.html.
+
+[2] Svensson, H. and Arts, T. 2005. A new leader election implementation. 
+ In Proceedings of the 2005 ACM SIGPLAN Workshop on Erlang (Tallinn, Estonia, 
+ September 26 - 28, 2005). ERLANG '05. ACM, New York, NY, 35-39. DOI= 
+  http://doi.acm.org/10.1145/1088361.1088368 
