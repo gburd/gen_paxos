@@ -15,25 +15,17 @@
 %%     You should have received a copy of the GNU General Public License
 %%     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-%% @doc generic PAXOS consensus protocol executer.
+%% @doc GENeric PAXOS consensus protocol executer.
+%%      this can't be used as a behaviour, but a API for making consensus.
 -module(gen_paxos).
 -author('kuenishi+paxos@gmail.com').
 
--export([behaviour_info/1, version_info/0]).
+-export([version_info/0]).
 
 -export([ask/2, start_link/2,
 	 stop/0, clear/0]).
 
-behaviour_info(callbacks)->
-    [
-     {start, 4},
-     {stop,  1},
-     {result,1}
-    ];
-behaviour_info(_Other)->
-    undefined.
-
-version_info()-> {?MODULE, 1}.
+version_info()-> {?MODULE, 1}.  %% math:exp(1)=2.718281828459045
 
 -define( DEFAULT_COORDINATOR_NUM, 3 ).
 
