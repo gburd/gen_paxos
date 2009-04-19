@@ -68,6 +68,7 @@ README: gen_paxos/paxos_fsm
  - gen_serverize
  - master election module with lease time, with replication consistency
  - performance test
+ - documentation :P
 
 
 * Related works
