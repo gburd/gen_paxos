@@ -14,8 +14,9 @@ README: gen_paxos/paxos_fsm
 
 * Current status
 
- A prototype of paxos consensus protocol (paxos_fsm) has successfully worked.
-
+  A prototype of paxos consensus protocol (paxos_fsm) has successfully worked.
+ GENeric PAXOS module is now under development, but 2-phase paxos consensus 
+ algorithm does not work so fast as other replication/consensus protocols.
 
 * Usage
 

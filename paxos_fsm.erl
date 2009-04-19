@@ -459,7 +459,7 @@ decided_callback(StateData)->
 
 %% @doc send back message to originator to share the consensus value.
 callback(S, V, ReturnPids)->
-    lists:map( fun(ReturnPid)-> ReturnPid ! {self(), set, {S, V}} end, ReturnPids ).
+    lists:map( fun(ReturnPid)-> ReturnPid ! {self(), result, {S, V}} end, ReturnPids ).
 
 code_change(_,_,_,_)->
     ok.
