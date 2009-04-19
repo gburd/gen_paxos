@@ -93,10 +93,9 @@ get_result(S)->
 
 
 %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ %%
-%%   codes belows are for gen_fsm. users don't need.       %%
+%%   codes below are for gen_fsm. users don't need.       %%
 %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ %%
 
-%init([S, InitN, V, Others, ReturnPid])->
 init(InitStateData)->
     %% message; 
     io:format("~p ~p: ~p~n", [?MODULE, started, InitStateData]),

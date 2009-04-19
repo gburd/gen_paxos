@@ -64,8 +64,6 @@ stop(N)->
     Coordinator ! {self(), stop, normal}.
     
 %% if you consult a value , set Value as void.
-%%ask(Key, void, Callback)->
-%%    ok.
 ask(Key, Value)->
     Coordinator = get_process_name_from_key( Key ),
     Coordinator ! {self(), ask, { Key, Value }},
