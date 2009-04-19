@@ -65,7 +65,8 @@ stop()->
 stop(0)-> ok;
 stop(N)-> 
     Coordinator = get_process_name_from_int( N ),
-    Coordinator ! {self(), stop, normal}.
+    Coordinator ! {self(), stop, normal},
+    stop(N-1).
     
 %% if you consult a value , set Value as void.
 ask(Key)->    ask(Key,void).
@@ -85,7 +86,8 @@ clear()->    clear( ?DEFAULT_COORDINATOR_NUM ).
 clear(0)-> ok;
 clear(N)-> 
     Coordinator = get_process_name_from_int( N ),
-    Coordinator ! {self(), clear, normal}.
+    Coordinator ! {self(), clear, normal},
+    clear(N-1).
 
 coordinator( InitN, Others )->
     receive
