@@ -1,6 +1,6 @@
 README: gen_paxos/paxos_fsm
 
-                                                                   2009.4.4 
+                                                                  2009.4.17
                                                    kuenishi+paxos@gmail.com
 
 * Motivation
@@ -17,6 +17,7 @@ README: gen_paxos/paxos_fsm
   A prototype of paxos consensus protocol (paxos_fsm) has successfully worked.
  GENeric PAXOS module is now under development, but 2-phase paxos consensus 
  algorithm does not work so fast as other replication/consensus protocols.
+
 
 * Usage
 
@@ -58,12 +59,15 @@ README: gen_paxos/paxos_fsm
 
 * Future works
 
- - to refine the code so as to work as a generic erlang module.
+ - to refine the code so as to work as a generic erlang module - deprecated. 
  - automation of basic tests.
  - to expand coverege of tested combinations of states.
    - because paxos is complex FSM as a whole
  - to create a gen_leader compatible interface?
    - gen_leader http://www.cs.chalmers.se/~hanssv/leader_election/
+ - gen_serverize
+ - master election module with lease time, with replication consistency
+ - performance test
 
 
 * Related works
