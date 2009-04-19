@@ -469,9 +469,10 @@ handle_event( stop, _StateName, StateData )->
 
 handle_info(_,_,_)->
     ok.
-handle_sync_event(result, _From, StateName, StateData)->
-%    {{S,N,V},Nums} = StateData,
+
+handle_sync_event(result, _From, StateName, StateData)->%    {{S,N,V},Nums} = StateData,
     {reply, {StateName, StateName#state.value}  , StateName, StateData};
+
 handle_sync_event(stop, From, StateName, StateData)->
     {stop, From, StateName, StateData}.
 
