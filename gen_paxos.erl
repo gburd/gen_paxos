@@ -17,6 +17,9 @@
 
 %% @doc GENeric PAXOS consensus protocol executer.
 %%      this can't be used as a behaviour, but a API for making consensus.
+%% @todo - add gen_server behaviour
+%%       - add how to stop result
+%%       - add some persistency feature.
 -module(gen_paxos).
 -author('kuenishi+paxos@gmail.com').
 

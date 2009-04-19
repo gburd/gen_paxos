@@ -32,12 +32,11 @@ README: gen_paxos/paxos_fsm
  'nodeA'.
  nodeA> nodes().
  ['nodeB'].
- nodeA> paxos_fsm:start( subject_x, 0, hogehoge, nodes() ).
+ nodeA> gen_paxos:start_link( 0, nodes() ).
+ nodeA> gen_paxos:ask( somekey, somevalue ).
  ...(paxos consensus protocol started; messages will be printed)...
  paxos mediation done. decided: hogehoge - (N=2)
- nodeA> paxos_fsm:get_result( subject_x ).
- {decided, hogehoge}
- nodeA> paxos_fsm:stop( subject_x ).
+ nodeA> gen_paxos:stop().
  paxos_fsm terminated (normal).
  ok
  StateName: decided
@@ -49,10 +48,12 @@ README: gen_paxos/paxos_fsm
  'nodeB'.
  nodeB> nodes().
  ['nodeA'].
- nodeB> paxos_fsm:start( subject_x, 1, hugahuga, nodes() ).
+ nodeB> gen_paxos:start_link( 1, nodes() ).
  ...(paxos consensus protocol started; messages will be printed)...
  paxos mediation done. decided: hogehoge - (N=2)
- nodeB>
+ nodeB> gen_paxos:ask( somekey, void ).
+ somevalue
+ nodeB> 
 
 
 * Future works
