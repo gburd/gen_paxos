@@ -1,6 +1,6 @@
 README: gen_paxos/paxos_fsm
 
-                                                                  2009.4.27
+                                                                   2009.8.1
                                                    kuenishi+paxos@gmail.com
 
 * Motivation
@@ -9,24 +9,24 @@ README: gen_paxos/paxos_fsm
  paxos implementation is to be a large finite state machine. My motivation
  is to reduce the cost of re-invention of wheels.
   PAXOS is a consensus method in distributed and masterless environment,
- which is mathmatically guaranteed to make conclusion in infinite time[1].
+ which is mathmatically guaranteed to make conclusion in infinite time.
 
 
 * Current status
 
-  Freezed. Someone who wants to succeed, keep tracking and developing this code,
- will be welcomed very much. It is also free under GPL license to download,
- branch, and use this code, permitted everywhere. If you please this code, I'd 
+  Freezed. Anyone who wants to succeed, keep tracking and developing this code,
+ will be welcomed very much. It is also free under LGPL to download,  branch
+ and use this code, permitted everywhere. If you please this code, I'd 
  like you to tell usage/technical report to me, I'll be very pleased so much!!!
 
   A prototype of paxos consensus protocol (paxos_fsm) has successfully worked.
- GENeric PAXOS module is now under development, but 2-phase paxos consensus 
- algorithm does not work so fast as other replication/consensus protocols.
+ GENeric PAXOS module has still more to do. 2-phase paxos consensus 
+ algorithm works, but not so fast as other replication/consensus protocols.
 
 
 * Usage
 
-  With setting (1)Name of Subject, (2)Idenfication Number in PAXOS group,
+  With setting (1)Name of Subject, (2)Identity Number in PAXOS group,
  (3)Value that PAXOS agent will propose, and (4)Other PAXOS agents into
  paxos_fsm:start/4, PAXOS consensus IPC (part-time parliament) starts. With
  calling paxos_fsm:get_result/1 you'll get result of the parliament. With
@@ -80,8 +80,8 @@ README: gen_paxos/paxos_fsm
  - libpaxos ( http://sourceforge.net/projects/libpaxos )
  libpaxos is almost same implementation of PAXOS consensus protocol. it has Simple
  version and Fast version of paxos and seems well working. it's implementation
- has paxos coordinator process which can be SPOF in a really distributed
- environment, which is solved in gen_paxos.
+ has paxos coordinator process, SPOF in a really distributed environment,
+ which is solved in gen_paxos.
 
  - gen_leader ( http://www.cs.chalmers.se/~hanssv/leader_election/ )
  gen_leader is a master election module whose behaviour looks like gen_server.
@@ -90,8 +90,7 @@ README: gen_paxos/paxos_fsm
 
 
 * Appendix
- - if you find a bug or written a patch/improvement, tell me through any path.
- - Usage / Copy / Redistribution License - GPLv2.
+ - Usage / Copy / Redistribution License is LGPLv3; see COPYING and COPYING.LESSER.
 
 
 [1] Chandra, Tushar; Robert Griesemer, Joshua Redstone (2007).
