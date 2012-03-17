@@ -3,19 +3,9 @@
 %% 　  Copyright (C) 2009   kuenishi+paxos@gmail.com
 
 %%     This program is free software: you can redistribute it and/or modify
-%%     it under the terms of the GNU General Public License as published by
-%%     the Free Software Foundation, either version 3 of the License, or
-%%     (at your option) any later version.
+%%     it under the terms of the Apache Software License 2.0
 
-%%     This program is distributed in the hope that it will be useful,
-%%     but WITHOUT ANY WARRANTY; without even the implied warranty of
-%%     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-%%     GNU General Public License for more details.
-
-%%     You should have received a copy of the GNU General Public License
-%%     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-%% @doc PAXOS Finit State Machine implementation
+%% @doc PAXOS Finite State Machine implementation
 -module(paxos_fsm).
 -author('kuenishi+paxos@gmail.com').
 
@@ -28,31 +18,31 @@
 
 %% @doc functions for gen_fsm.
 -export([init/1, handle_event/3, handle_sync_event/4,
-	 handle_info/3, terminate/3, code_change/4]).
+         handle_info/3, terminate/3, code_change/4]).
 
 %% @doc states of FSM.
 -export([nil/2, preparing/2, proposing/2, acceptor/2,
-	 learner/2, decided/2]).
+         learner/2, decided/2]).
 
 -define( DEFAULT_TIMEOUT, 3000 ).
 
 %% @doc state data for all machines,
 %%
 -record( state, {subject, n, value,
-		 all, quorum, current=0, others, init_n,
-		 return_pids=[]
-		} ).
+                 all, quorum, current=0, others, init_n,
+                 return_pids=[]
+                } ).
 
 %% -record( event, {name,
-%% 		 subject, n, value,
-%% 		 from} ).
+%%               subject, n, value,
+%%               from} ).
 
 %% @type subject_identifier() = atom()
 %% @type propose_number() = int()
 %% @type players() = list()
 
 version_info()-> {?MODULE, 1}.
-    
+
 %% @doc   Users call this function. Initializes PAXOS FSM.
 %%        subject_identifier - subject name. this names process, unless paxos_fsm can't find others.
 %%        n()                - paxos_fsm agent id. this must be unique in the paxos_fsm group.
@@ -65,15 +55,15 @@ version_info()-> {?MODULE, 1}.
 %%    Result = {ok, Pid} | ignore | { error, Error }
 %%    Error  = {already_started, Pid } | term()
 %%    Pid = pid()
-%%    
+%%
 start(S, InitN, V, Others, ReturnPids) ->
 %%    lists:map( fun(Other)-> net_adm:ping(Other) end, Others ),
     %% setting data;
     All = length(Others)+1,    Quorum = All / 2 ,
     InitStateData = #state{ subject=S, n=InitN, value=V,
-			    all=All, quorum=Quorum, others=Others, init_n=InitN,
-			    return_pids=ReturnPids },
-    gen_fsm:start_link( 
+                            all=All, quorum=Quorum, others=Others, init_n=InitN,
+                            return_pids=ReturnPids },
+    gen_fsm:start_link(
       generate_global_address( node(), S ), %FsmName  %%{global, ?MODULE},       %{local, {?MODULE, S} },
       ?MODULE,                        %Module
       InitStateData,                %Args
@@ -97,12 +87,12 @@ get_result(S)->
 %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ %%
 
 init(InitStateData)->
-    %% message; 
+    %% message;
     io:format("~p ~p: ~p~n", [?MODULE, started, InitStateData]),
     %% starting paxos_fsm...
     process_flag(trap_exit, true),
-    {ok, 
-     nil,  %% initial statename 
+    {ok,
+     nil,  %% initial statename
      InitStateData,     %%{{S, InitN, V},{All, Quorum, 0, Others, InitN}, Misc }, %% initial state data
      ?DEFAULT_TIMEOUT %% initial state timeout
     }.
@@ -110,7 +100,7 @@ init(InitStateData)->
 broadcast(Others, S, Message)->
     PaxosOthers = [ generate_global_address( P, S ) || P <-  Others ],
     lists:map( fun(Other)-> gen_fsm:send_event( Other, Message ) end , %Timeout * 1) end,
- 	       PaxosOthers ).
+               PaxosOthers ).
 
 send(Node, S, Message)->
 %    io:format("sending: ~p to ~p~n", [Message, {global, {?MODULE, Node, S}}] ),
@@ -140,12 +130,12 @@ generate_global_address( Node, Subject )->  {global, {?MODULE, Node, Subject}}.
 
 %% =========================================
 %%  - nil ( master lease time out )
-nil( {prepare,  {S, N, _V, From}},  StateData) when N > StateData#state.n -> 
+nil( {prepare,  {S, N, _V, From}},  StateData) when N > StateData#state.n ->
 %    {{S, Nc, _Vc}, Nums} ) when N > Nc ->
 %    gen_fsm:sync_send_event(From, {prepare_result, {0, nil}}),
     send(From, S, {prepare_result, {S, 0, nil, node()}}),
     NewStateData = StateData#state{n=N},
-    {next_state, acceptor, NewStateData, %{{S, N, V}, Nums}, 
+    {next_state, acceptor, NewStateData, %{{S, N, V}, Nums},
      ?DEFAULT_TIMEOUT};
 nil( {prepare,  {S, N, _V, From}}, StateData) when N < StateData#state.n ->  %{{S, Nc, Vc}, Nums} ) when N < Nc ->
 %    gen_fsm:sync_send_event(From, {prepare_result, {0, nil}}),
@@ -200,31 +190,31 @@ preparing( {prepare_result,  {S, N, V, From}},  StateData ) when N > StateData#s
     {next_state, acceptor, StateData#state{subject=S, n=N, value=V}, ?DEFAULT_TIMEOUT};
 
 preparing( {prepare_result,  {S, _N, _V, _From}}, StateData ) when StateData#state.current > StateData#state.quorum ->
-%	   {{S, Nc, Vc}, {All, Quorum, Current, Others, InitN}} ) when Current > Quorum->
+%          {{S, Nc, Vc}, {All, Quorum, Current, Others, InitN}} ) when Current > Quorum->
     broadcast( StateData#state.others, S, {propose, {S,StateData#state.n,StateData#state.value, node()}} ),
 %    {next_state, proposing, {{S, Nc, Vc}, {All, Quorum, 1, Others, InitN}}, ?DEFAULT_TIMEOUT};
     {next_state, proposing, StateData#state{current=1}, ?DEFAULT_TIMEOUT};
 
 %preparing( {prepare_result,  {S, N, V, _From}}, {{S, N, V}, {All, Quorum, Current, Others, InitN}} )->
-preparing( {prepare_result,  {S, N, V, _From}}, StateData ) 
+preparing( {prepare_result,  {S, N, V, _From}}, StateData )
   when S==StateData#state.subject , N==StateData#state.n , V==StateData#state.value ->
     Current = StateData#state.current,
     {next_state, proposing, StateData#state{current=Current+1}, ?DEFAULT_TIMEOUT};
 
 %preparing( {prepare_result,  {S, N, _V, _From}}, {{S, Nc, Vc}, {All, Quorum, Current, Others, InitN}} ) when N < Nc->
-preparing( {prepare_result,  {S, N, _V, _From}}, StateData ) when N < StateData#state.n -> 
+preparing( {prepare_result,  {S, N, _V, _From}}, StateData ) when N < StateData#state.n ->
  %{{S, Nc, Vc}, {All, Quorum, Current, Others, InitN}} ) when N < Nc->
  %   io:format("recvd: ~p; (Current, Quorum)=(~p,~p)~n", [{{S,N,_V,_From}, {S, Nc, Vc }}, Current, Quorum]),
     case (StateData#state.current + 1 > StateData#state.quorum) of
-	true -> 
-	    io:format("got quorum at prepare!~n", []),
-	    broadcast( StateData#state.others, S, {propose, {S, StateData#state.n, StateData#state.value, node()}} ),
-%	    io:format("proposing ~p...~n", [{propose, {S,Nc,Vc,node()}}]),
-	    {next_state, proposing, StateData#state{current=1}, ?DEFAULT_TIMEOUT};
-	false ->
-	    Current = StateData#state.current,
-	    {next_state, preparing, StateData#state{current=Current+1}, ?DEFAULT_TIMEOUT} 
-						%{{S, Nc, Vc}, {All, Quorum, Current+1, Others, InitN}},
+        true ->
+            io:format("got quorum at prepare!~n", []),
+            broadcast( StateData#state.others, S, {propose, {S, StateData#state.n, StateData#state.value, node()}} ),
+%           io:format("proposing ~p...~n", [{propose, {S,Nc,Vc,node()}}]),
+            {next_state, proposing, StateData#state{current=1}, ?DEFAULT_TIMEOUT};
+        false ->
+            Current = StateData#state.current,
+            {next_state, preparing, StateData#state{current=Current+1}, ?DEFAULT_TIMEOUT}
+                                                %{{S, Nc, Vc}, {All, Quorum, Current+1, Others, InitN}},
     end;
 
 %% preparing( {propose,  {S, N, V, From}},  {{S, Nc, Vc}, Nums} ) when N < Nc ->
@@ -248,7 +238,7 @@ preparing( {decide,  {_S, N, V, _From}}, StateData)-> %{{S, _Nc, _Vc}, Nums} ) -
 %    {next_state, decided, StateData#state{n=N, value=V}, ?DEFAULT_TIMEOUT};
 
 preparing( timeout, StateData)-> %{{S, N, V},  {All, Quorum, _Current, Others, InitN} } )->
-    {next_state, nil,  StateData#state{current=0}, ?DEFAULT_TIMEOUT}. 
+    {next_state, nil,  StateData#state{current=0}, ?DEFAULT_TIMEOUT}.
      %{{S, N, V}, {All, Quorum, 0, Others, InitN}}, ?DEFAULT_TIMEOUT}.
 
 %% =========================================
@@ -280,8 +270,8 @@ proposing( {propose,  {S, N, V, From}},  StateData) when N > StateData#state.n -
 %% proposing( {propose_result,  {S, N, V, From}},  {{S, Nc, Vc}, Nums} ) when N < Nc ->
 %%     {next_state, hoge, {{S, Nc, Vc}, Nums}, ?DEFAULT_TIMEOUT};
 
-%% proposing( {propose_result,  {S, N, V, _From}}, 
-%% 	   {{S, N, V}, {All, Quorum, Current, Others, InitN}} ) when (Quorum > Current+1) -> % when N == Nc
+%% proposing( {propose_result,  {S, N, V, _From}},
+%%         {{S, N, V}, {All, Quorum, Current, Others, InitN}} ) when (Quorum > Current+1) -> % when N == Nc
 proposing( {propose_result,  {S, N, V, _From}}, StateData)
   when N==StateData#state.n, V==StateData#state.value, StateData#state.quorum > StateData#state.current+1 ->
     S=StateData#state.subject,
@@ -290,7 +280,7 @@ proposing( {propose_result,  {S, N, V, _From}}, StateData)
 
 %% Got quorum!!!
 %% proposing( {propose_result,  {S, N, V, _From}},
-%% 	   {{S, N, V}, {All, Quorum, Current, Others, InitN}} )-> % when N == Nc
+%%         {{S, N, V}, {All, Quorum, Current, Others, InitN}} )-> % when N == Nc
 proposing( {propose_result,  {S, N, V, _From}}, StateData) when N==StateData#state.n, V==StateData#state.value->
     io:format("got quorum at proposing!!~n", []),
     broadcast( StateData#state.others, S, {decide, {S, N, V, node()}} ),
