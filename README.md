@@ -82,7 +82,7 @@ in node B:
  - documentation :P
 
 
-* Related works
+### Related works
 
  - `libpaxos` ( http://sourceforge.net/projects/libpaxos ) libpaxos is almost
  same implementation of PAXOS consensus protocol. It has Simple version and
