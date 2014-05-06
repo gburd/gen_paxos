@@ -5,11 +5,13 @@
 %%     This program is free software: you can redistribute it and/or modify
 %%     it under the terms of the Apache Software License 2.0
 
-%% @doc GENeric PAXOS consensus protocol executer.
+%% @doc Generic PAXOS consensus protocol executer.
 %%      this can't be used as a behaviour, but a API for making consensus.
+%%
 %% @todo - add gen_server behaviour
+%%       - use UDP rather than disterl (TCP) which is overkill for Paxos
 %%       - add how to stop result
-%%       - add some persistency feature.
+%%       - add some persistence feature.
 -module(gen_paxos).
 -author('kuenishi+paxos@gmail.com').
 
@@ -18,12 +20,12 @@
 -export([ask/1, ask/2, start_link/2,
          stop/0, clear/0]).
 
-version_info()-> {?MODULE, 1}.  %% math:exp(1)=2.718281828459045
+version_info() -> {?MODULE, 1}.
 
 -define( DEFAULT_COORDINATOR_NUM, 3 ).
 
-%% spawns a coordinator process.
-%% @spec  start_link( node_identifier(), initN, other_players() ) -> Pid
+%% @doc Spawns a coordinator process.
+%% -spec start_link( node_identifier(), initN, other_players() ) -> Pid.
 start_link( InitN, Others )->
     io:format( "starting ~p agent...", [?MODULE] ),
     Pongs=lists:filter(fun(X)->
@@ -31,7 +33,7 @@ start_link( InitN, Others )->
                        end ,
                        lists:map(
                          fun(Other)-> net_adm:ping(Other) end,
-                         Others )),
+                         Others)),
     io:format( "~p nodes ponged.~n", [length( Pongs )] ),
     start_link( InitN, Others, ?DEFAULT_COORDINATOR_NUM ).
 
@@ -59,7 +61,8 @@ stop(N)->
     stop(N-1).
 
 %% if you consult a value , set Value as void.
-ask(Key)->    ask(Key,void).
+ask(Key)->
+    ask(Key, void).
 
 ask(Key, Value)->
     Coordinator = get_process_name_from_key( Key ),

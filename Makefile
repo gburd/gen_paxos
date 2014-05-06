@@ -1,9 +1,8 @@
 
 APP             ?=gen_paxos
-ERL             ?=erl
-CT_RUN          ?=ct_run
-ERL_FLAGS       ?=+A10
-REBAR_FLAGS     :=
+REBAR=          /usr/bin/env rebar
+DIALYZER=	/usr/bin/env dialyzer
+ERL=		/usr/bin/env erl
 
 all: deps compile
 
@@ -11,12 +10,27 @@ deps:
 	$(REBAR) get-deps
 
 compile:
-	ERL_FLAGS=$(ERL_FLAGS) $(REBAR) $(REBAR_FLAGS) compile
+	$(REBAR) compile
+
+plt: compile
+	@$(DIALYZER) --build_plt --output_plt .$(TARGET).plt \
+		-pa deps/plain_fsm/ebin \
+		deps/plain_fsm/ebin \
+		--apps kernel stdlib
+
+analyze: compile
+	$(DIALYZER) --plt .$(TARGET).plt \
+	-pa deps/plain_fsm/ebin \
+	-pa deps/ebloom/ebin \
+	ebin
+
+repl:
+	$(ERL) -pz deps/*/ebin -pa ebin
 
 test: tests
 
 tests:
-	@ $(REBAR) $(REBAR_FLAGS) eunit app=$(APP)
+	@ $(REBAR) skip_deps=true $(REBAR_FLAGS) $(EUNIT_OPTIONS) eunit app=$(APP)
 	@ $(REBAR) $(REBAR_FLAGS) ct app=$(APP)
 
 clean:
@@ -25,7 +39,3 @@ clean:
 
 distclean: clean
 	$(REBAR) delete-deps
-
-include rebar.mk
-
-.EXPORT_ALL_VARIABLES:
