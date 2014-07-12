@@ -5,7 +5,7 @@
 %%     This program is free software: you can redistribute it and/or modify
 %%     it under the terms of the Apache Software License 2.0
 
-%% @doc Generic PAXOS consensus protocol executer.
+%% @doc GENeric PAXOS consensus protocol executer.
 %%      this can't be used as a behaviour, but a API for making consensus.
 %%
 %% @todo - add gen_server behaviour

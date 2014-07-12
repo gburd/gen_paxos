@@ -1,35 +1,34 @@
-README: gen_paxos/paxos_fsm
+## gen_paxos/paxos_fsm
 
-                                                                   2012.3.17
-                                                                greg@burd.me
+### Motivation
 
-* Motivation
-
- gen_paxos is an implementation of the Paxos protocol for Erlang/OTP. Paxos
+ `gen_paxos` is an implementation of the Paxos protocol for Erlang/OTP. Paxos
  implementation is to be a large finite state machine. My motivation is to
  reduce the cost of re-invention of wheels.  PAXOS is a consensus method in
  distributed and masterless environment, which is mathmatically guaranteed to
  come to a conclusion in a finite amount of time.
 
+### Current status
 
-* Current status
+ **UNDER DEVELOPMENT**
 
- UNDER DEVELOPMENT:
  Prototype of paxos consensus protocol (paxos_fsm) has successfully worked,
  but there is major work still to do before this is viable for production
  use.  See "future work" below for the list.
 
+### Usage
 
-* Usage
-
- With setting (1)Name of Subject, (2)Identity Number in PAXOS group, (3)Value
- that PAXOS agent will propose, and (4)Other PAXOS agents into
+ With setting (1) Name of Subject, (2) Identity Number in PAXOS group, (3) Value
+ that PAXOS agent will propose, and (4) Other PAXOS agents into
  paxos_fsm:start/4, PAXOS consensus IPC (part-time parliament) starts. With
  calling paxos_fsm:get_result/1 you'll get result of the parliament. With
  calling paxos_fsm:stop/1 you'll garbage-collect the part-time parliament.
 
-** Example
-- in node A:
+#### Example
+
+in node A:
+
+```erlang
  nodeA> node().
  'nodeA'.
  nodeA> nodes().
@@ -44,8 +43,11 @@ README: gen_paxos/paxos_fsm
  StateName: decided
  StateData: ....
  nodeA>
+```
 
-- in node B:
+in node B:
+
+```erlang
  nodeB> node().
  'nodeB'.
  nodeB> nodes().
@@ -56,9 +58,10 @@ README: gen_paxos/paxos_fsm
  nodeB> gen_paxos:ask( somekey, void ).
  somevalue
  nodeB>
+```
 
 
-* Future Work
+### Future Work
 
  - replace use of disterl with UDP sockets
  - 2-phase paxos consensus algorithm works, but not so fast as other
@@ -76,20 +79,20 @@ README: gen_paxos/paxos_fsm
  - documentation :P
 
 
-* Related works
+### Related works
 
- - libpaxos ( http://sourceforge.net/projects/libpaxos ) libpaxos is almost
+ - `libpaxos` ( http://sourceforge.net/projects/libpaxos ) libpaxos is almost
  same implementation of PAXOS consensus protocol. It has Simple version and
  Fast version of paxos and seems well working. Its implementation has paxos
  coordinator process, SPOF in a really distributed environment, which is solved
  in gen_paxos.
 
- - gen_leader ( http://www.cs.chalmers.se/~hanssv/leader_election/ ) gen_leader
+ - `gen_leader` ( http://www.cs.chalmers.se/~hanssv/leader_election/ ) gen_leader
  is a master election module whose behaviour looks like gen_server.  It's
  siginificant in churn environment (maybe) and small rate of mis-election,
  controllability with proirity. Valid information and details are in [2].
 
-* License
+### License
 
 The first author of this package UENISHI Kota has given permission to
 re-license his works under the Apache Software License version 2 (ASLv2) in an
@@ -100,11 +103,12 @@ starting with this version of this software (released in 2012) the code is
 available for use under the Apache Software License (see the LICENSE file for
 complete terms and conditions of use).
 
-* Authors
+### Authors
+
   - UENISHI Kota <kuenishi+paxos@gmail.com>
   - Greg Burd <greg@burd.me> @gregburd
 
-* Appendix
+### Appendix
 
 [1] Chandra, Tushar; Robert Griesemer, Joshua Redstone (2007).
  "Paxos Made Live – An Engineering Perspective". PODC '07:
